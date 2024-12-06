@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   ApolloClient,
   InMemoryCache,
@@ -11,7 +10,6 @@ import {
 import { onError } from '@apollo/client/link/error';
 import { RetryLink } from '@apollo/client/link/retry';
 import { setContext } from '@apollo/client/link/context';
-import { ApolloConfig } from '@/types';
 
 // Cache configuration with field policies
 const createCache = () => {
@@ -21,7 +19,11 @@ const createCache = () => {
         fields: {
           paginatedItems: {
             keyArgs: ['filter'],
-            merge(existing: readonly unknown[] = [], incoming: readonly unknown[], { args }: { args?: { offset?: number } }) {
+            merge(
+              existing: readonly unknown[] = [],
+              incoming: readonly unknown[],
+              { args }: { args?: { offset?: number } }
+            ) {
               if (args?.offset) {
                 return [...existing, ...incoming];
               }
@@ -35,13 +37,11 @@ const createCache = () => {
 };
 
 // Create a retry link for failed requests
-const createRetryLink = (attempts: number = 3) => {
+const createRetryLink = (attempts: number = 2) => {
   return new RetryLink({
     attempts: {
       max: attempts,
-      retryIf: (error: any) => {
-        return !!error && (error.statusCode === undefined || error.statusCode >= 500);
-      },
+      retryIf: (error: any) => !!error && (error.statusCode === undefined || error.statusCode >= 500),
     },
     delay: {
       initial: 300,
@@ -64,11 +64,43 @@ const createAuthLink = (getToken: () => string | null) => {
   });
 };
 
+// CSRF token handling
+let csrfToken: string | null = null;
+
+// Fetch CSRF token from the API
+const fetchCsrfToken = async (): Promise<string> => {
+  if (csrfToken) return csrfToken;
+
+  const response = await fetch('/csrf-token', {
+    method: 'GET',
+    credentials: 'include', // Include credentials for cookies if needed
+  });
+  const data = await response.json();
+  csrfToken = data?.csrfToken;
+  return csrfToken;
+};
+
+// Create a CSRF link to add the CSRF token to each request
+const createCsrfLink = () => {
+  return setContext(async (_, { headers }) => {
+    if (!csrfToken) {
+      await fetchCsrfToken();
+    }
+
+    return {
+      headers: {
+        ...headers,
+        'X-CSRF-Token': csrfToken || '',
+      },
+    };
+  });
+};
+
 // Create an error handling link
 const createErrorLink = (
   errorCallback?: (error: Error) => void,
   tokenRefreshEndpoint?: string,
-  onTokenRefresh?: (newToken: string) => void,
+  onTokenRefresh?: (newToken: string) => void
 ) => {
   return onError(({ graphQLErrors, networkError, operation, forward }) => {
     if (graphQLErrors) {
@@ -85,10 +117,10 @@ const createErrorLink = (
                     credentials: 'include',
                   });
                   const { token } = await response.json();
-                  
+
                   // Update token in storage/memory
                   onTokenRefresh(token);
-                  
+
                   // Retry the failed request
                   const oldHeaders = operation.getContext().headers;
                   operation.setContext({
@@ -131,11 +163,19 @@ export const createApolloClient = ({
   uri,
   enableRetry = true,
   retryAttempts = 3,
-  tokenRefreshEndpoint,
   getToken,
+  tokenRefreshEndpoint,
   onTokenRefresh,
   onError,
-}: ApolloConfig): ApolloClient<NormalizedCacheObject> => {
+}: {
+  uri: string;
+  enableRetry?: boolean;
+  retryAttempts?: number;
+  getToken?: () => string | null;
+  tokenRefreshEndpoint?: string;
+  onTokenRefresh?: (newToken: string) => void;
+  onError?: (error: Error) => void;
+}): ApolloClient<NormalizedCacheObject> => {
   // Create the basic HTTP link
   const httpLink = new HttpLink({ uri });
 
@@ -154,6 +194,9 @@ export const createApolloClient = ({
   if (getToken) {
     links.push(createAuthLink(getToken));
   }
+
+  // Add CSRF link
+  links.push(createCsrfLink());
 
   // Add HTTP link last
   links.push(httpLink);

@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authslice';
+import logger from 'redux-logger';
 
 export const store = configureStore({
     reducer: {
@@ -8,7 +9,7 @@ export const store = configureStore({
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: false,
-        }),
+        }).concat(logger),
 });
 
 export type AppDispatch = typeof store.dispatch;

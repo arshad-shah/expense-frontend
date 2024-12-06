@@ -52,7 +52,6 @@ export class HttpClient {
     } else {
       data = await response.text() as unknown as T;
     }
-
     if (!response.ok) {
       throw new ApiError(response.status, response.statusText, data);
     }
@@ -80,7 +79,21 @@ export class HttpClient {
     }
   }
 
-  // Main request method
+  private async refreshToken(): Promise<string | null> {
+    try {
+      const response = await this.post<{ token: string }>('/auth/refresh-token', {});
+      const newToken = response.data.token;
+
+      // Save the refreshed token
+      sessionStorage.setItem('token', newToken);
+      return newToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      sessionStorage.removeItem('token'); // Clear any invalid token
+      return null;
+    }
+  }
+
   public async request<TResponse = unknown, TBody = unknown>(
     endpoint: string,
     config: RequestConfig<TBody> = {}
@@ -91,7 +104,6 @@ export class HttpClient {
       headers: {
         ...this.defaultConfig.headers,
         ...config.headers,
-        Cookie: document.cookie,
       },
     };
 
@@ -103,23 +115,34 @@ export class HttpClient {
     try {
       return await this.withRetry(
         async () => {
-          const response = await fetch(this.buildUrl(endpoint, queryParams), {
-            method,
-            headers: mergedConfig.headers,
-            body: body ? JSON.stringify(body) : undefined,
-            signal: controller.signal,
-            credentials: 'include',
-          });
-
-          console.log("Got a cookie", response.headers);
-          
-          // Handle incoming cookies from response headers
-          const setCookie = response.headers.get('set-cookie');
-          if (setCookie) {
-            document.cookie = setCookie;
+          try {
+            const response = await fetch(this.buildUrl(endpoint, queryParams), {
+              method,
+              headers: mergedConfig.headers,
+              body: body ? JSON.stringify(body) : undefined,
+              signal: controller.signal,
+              credentials: 'include',
+            });
+            return this.handleResponse<TResponse>(response);
+          } catch (error) {
+            // If the response status is 401, attempt a token refresh
+            if (error instanceof ApiError && error.status === 401) {
+              const newToken = await this.refreshToken();
+              if (newToken) {
+                // Retry the request with the new token
+                mergedConfig.headers['Authorization'] = `Bearer ${newToken}`;
+                const retryResponse = await fetch(this.buildUrl(endpoint, queryParams), {
+                  method,
+                  headers: mergedConfig.headers,
+                  body: body ? JSON.stringify(body) : undefined,
+                  signal: controller.signal,
+                  credentials: 'include',
+                });
+                return this.handleResponse<TResponse>(retryResponse);
+              }
+            }
+            throw error; // Rethrow if the refresh fails
           }
-
-          return this.handleResponse<TResponse>(response);
         },
         retries ?? this.defaultConfig.retries!,
         retryDelay ?? this.defaultConfig.retryDelay!

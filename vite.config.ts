@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
 
 export default defineConfig({
   plugins: [react()],
@@ -12,22 +13,20 @@ export default defineConfig({
   server: {
     host: 'local.arshadshah.com',
     port: 5173,
+    https: {
+      key: fs.readFileSync('./certs/localhost+2-key.pem'),
+      cert: fs.readFileSync('./certs/localhost+2.pem'),
+    },
     proxy: {
       '/api': {
-        target: 'http://expense-api.arshadshah.com',
+        target: 'https://expense-api.arshadshah.com',
         changeOrigin: true,
-        secure: false,
-        headers: {
-          Origin: 'https://expense.arshadshah.com'
-        }
+        secure: true,
       },
       '/graphql': {
-        target: 'http://expense-api.arshadshah.com',
+        target: 'https://expense-api.arshadshah.com',
         changeOrigin: true,
-        secure: false,
-        headers: {
-          Origin: 'https://expense.arshadshah.com'
-        }
+        secure: true,
       }
     },
   }
