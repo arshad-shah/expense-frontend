@@ -22,24 +22,24 @@ export class HttpClient {
 
   // Helper method to build URL with query parameters
   private buildUrl(endpoint: string, queryParams?: Record<string, string>): string {
-    console.log('endpoint', endpoint);
-    console.log('baseUrl', this.baseUrl);
+    // If baseUrl is a relative URL (starts with '/'), we need to use the current origin
+    let fullUrl: URL;
+    
+    if (this.baseUrl.startsWith('/')) {
+      // For relative URLs, use the current window location as base
+      fullUrl = new URL(this.baseUrl + endpoint, window.location.origin);
+    } else {
+      // For absolute URLs, use them directly
+      fullUrl = new URL(this.baseUrl + endpoint);
+    }
 
-    // concatenate the endpoint with the base URL
-    const joined = this.baseUrl + endpoint;
-    
-    
-    const url = new URL(joined);
-    console.log('url', url.toString());
-    
-    
     if (queryParams) {
       Object.entries(queryParams).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
+        fullUrl.searchParams.append(key, value);
       });
     }
     
-    return url.toString();
+    return fullUrl.toString();
   }
 
   // Helper method to handle response
@@ -91,6 +91,7 @@ export class HttpClient {
       headers: {
         ...this.defaultConfig.headers,
         ...config.headers,
+        Cookie: document.cookie,
       },
     };
 
@@ -107,7 +108,16 @@ export class HttpClient {
             headers: mergedConfig.headers,
             body: body ? JSON.stringify(body) : undefined,
             signal: controller.signal,
+            credentials: 'include',
           });
+
+          console.log("Got a cookie", response.headers);
+          
+          // Handle incoming cookies from response headers
+          const setCookie = response.headers.get('set-cookie');
+          if (setCookie) {
+            document.cookie = setCookie;
+          }
 
           return this.handleResponse<TResponse>(response);
         },

@@ -7,5 +7,6 @@ export class ApiError extends Error {
   ) {
     super(`API Error: ${status} ${statusText}`);
     this.name = 'ApiError';
+    this.data = data;
   }
 }

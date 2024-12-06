@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, User } from '../types';
 import { HttpClient } from '@/api/restClient/HttpClient';
+import { ApiError } from '@/api/common/ApiError';
 
 interface RegisterData {
     email: string;
@@ -17,38 +18,32 @@ const initialState: AuthState = {
     error: null,
 };
 
-const restClient = new HttpClient('expense-api.arshadshah.com/api');
+const BASE_URL = import.meta.env.PROD 
+  ? 'http://expense-api.arshadshah.com/api'
+  : '/api';
+
+const restClient = new HttpClient(BASE_URL);
 
 export const register = createAsyncThunk(
     'auth/register',
     async (registerData: RegisterData, { rejectWithValue }) => {
         try {
-            console.log('registerData', registerData);
-            
-            const csrfResponse = await restClient.get('/csrf-token', {
-                headers: {
-                    'Origin': 'https://expense.arshadshah.com/',
-                },
-            });
-            console.log('csrfResponse', csrfResponse);
+            const csrfResponse = await restClient.get('/csrf-token',);
             
             const csrfToken = (csrfResponse as { data: { csrfToken: string } }).data.csrfToken;
+            console.log(csrfToken);
+            
             
             const response = await restClient.post('/auth/register', registerData, {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken,
-                    'Origin': 'https://expense.arshadshah.com/',
                 },
             });
-
-            if (response.error) {
-                throw new Error('Failed to register');
-            }
-
+        
             return response.data;
-        } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : 'An unknown error occurred');
+        } catch (error: unknown) {
+            return rejectWithValue(error instanceof ApiError ? "Registration failed. Please try again later." : 'An unknown error occurred');
         }
     }
 );
