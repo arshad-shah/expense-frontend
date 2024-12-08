@@ -44,7 +44,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const CustomInput = React.forwardRef<HTMLDivElement, any>(
-    ({ value, onClick, label }, ref) => (
+    ({ value, onClick }, ref) => (
       <div
         ref={ref}
         onClick={disabled ? undefined : onClick}

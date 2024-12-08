@@ -18,6 +18,7 @@ import type {
   TransactionFilters,
   Account,
   Category,
+  TransactionResponse,
 } from "../types";
 
 export const getTransactions = async (
@@ -40,7 +41,7 @@ export const getTransactions = async (
   const querySnapshot = await getDocs(q);
   const transactions = await Promise.all(
     querySnapshot.docs.map(async (doc) => {
-      const transactionData = doc.data() as Transaction;
+      const transactionData = doc.data() as TransactionResponse;
       const [accountDoc, categoryDoc] = await Promise.all([
         getDoc(firestoreDoc(db, "accounts", transactionData.accountId)),
         getDoc(firestoreDoc(db, "categories", transactionData.categoryId)),
@@ -76,9 +77,9 @@ export const getTransactions = async (
         type: transactionData.type,
         description: transactionData.description,
         transactionDate: transactionData.transactionDate,
-        isRecurring: transactionData.isRecurring || false,
-        recurringPattern: transactionData.recurringPattern,
-        attachments: transactionData.attachments || [],
+        isRecurring: false,
+        recurringPattern: "",
+        attachments: [],
       };
       } else {
         throw new Error("Related account or category not found");
@@ -190,10 +191,10 @@ export const getRecentTransactions = async (
   const querySnapshot = await getDocs(q);
   const transactions = await Promise.all(
     querySnapshot.docs.map(async (doc) => {
-      const transactionData = doc.data() as Transaction;
+      const transactionData = doc.data() as TransactionResponse;
 
       const [accountDoc, categoryDoc] = await Promise.all([
-        getDoc(firestoreDoc(db, "accounts", transactionData.accountId)),
+        getDoc(firestoreDoc(db, "accounts", transactionData.accountId )),
         getDoc(firestoreDoc(db, "categories", transactionData.categoryId)),
       ]);
 
@@ -226,9 +227,9 @@ export const getRecentTransactions = async (
           type: transactionData.type,
           description: transactionData.description,
           transactionDate: transactionData.transactionDate,
-          isRecurring: transactionData.isRecurring || false,
-          recurringPattern: transactionData.recurringPattern,
-          attachments: transactionData.attachments || [],
+          isRecurring: false,
+          recurringPattern: "",
+          attachments: [],
         };
       } else {
         throw new Error("Related account or category not found");

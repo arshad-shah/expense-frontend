@@ -207,3 +207,15 @@ export interface BudgetPerformance {
   percentageUsed: number;
   status: 'ON_TRACK' | 'WARNING' | 'EXCEEDED';
 }
+
+
+export interface TransactionResponse {
+  accountId: string;
+  amount: number;
+  categoryId: string;
+  createdAt: string;
+  description: string;
+  transactionDate: string;
+  type: string;
+  userId: string;
+}

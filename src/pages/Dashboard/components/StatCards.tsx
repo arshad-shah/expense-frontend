@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, CreditCard, Wallet, PiggyBank, AlertTriangle 
 import { useAuth } from '@/contexts/AuthContext';
 import { getAccountsWithBalance } from '@/services/AccountService';
 import { getTransactions } from '@/services/TransactionService';
-import type { Transaction, AccountWithBalance } from '@/types';
+import type { Transaction } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface StatData {
