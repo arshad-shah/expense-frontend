@@ -13,7 +13,6 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Checkbox } from '@/components/Checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
 const Login = () => {
   const [email, setEmail] = useState('');

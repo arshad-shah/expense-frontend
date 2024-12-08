@@ -8,8 +8,6 @@ import {
   TrendingUp, 
   AlertCircle, 
   Briefcase,
-  Download,
-  FileText
 } from "lucide-react";
 import AccountCard from "./components/AccountCard";
 import AddAccountModal from "./components/AddAccountModal";

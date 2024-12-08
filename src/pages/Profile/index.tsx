@@ -3,7 +3,6 @@ import { User, UserInput } from "@/types";
 import { AccountOverview } from "./Components/AccountsOverview";
 import { ProfileForm } from "./Components/ProfileForm";
 import { getUser, updateUser } from "@/services/userService"; // Import your user service
-import { Button } from "@/components/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import PageLoader from "@/components/PageLoader";
 import ErrorState from "@/components/ErrorState";

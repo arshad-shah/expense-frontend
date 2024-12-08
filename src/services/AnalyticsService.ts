@@ -7,7 +7,6 @@ import type {
   Transaction,
   Budget,
   BudgetCategory,
-  Category,
   DateRange,
   BudgetPeriod,
 } from "../types";

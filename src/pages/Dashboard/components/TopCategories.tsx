@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getTransactions } from '@/services/TransactionService';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Transaction } from '@/types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import EmptyState from '@/components/EmptyState';
 import { ArrowUpRight, PieChart as PieChartIcon, AlertTriangle } from 'lucide-react';
 

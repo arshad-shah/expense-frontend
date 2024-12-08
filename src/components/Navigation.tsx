@@ -16,7 +16,13 @@ import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
-const Navigation = () => {
+interface NavItem {
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}
+
+const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,16 +61,16 @@ const Navigation = () => {
     }
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/accounts', icon: CreditCard, label: 'Accounts' },
     { path: '/transactions', icon: DollarSign, label: 'Transactions' },
     { path: '/budgets', icon: PieChart, label: 'Budgets' },
   ];
 
-  const isActivePath = (path) => location.pathname === path;
+  const isActivePath = (path: string) => location.pathname === path;
 
-  const NavLink = ({ item, isMobile = false }) => (
+  const NavLink: React.FC<{ item: NavItem; isMobile?: boolean }> = ({ item, isMobile = false }) => (
     <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
