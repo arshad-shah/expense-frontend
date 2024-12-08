@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTransactions } from '@/services/TransactionService';
@@ -25,6 +24,15 @@ const SpendingChart: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { user } = useAuth();
+
+    const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: user?.currency || 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
   
   // Calculate total spending and income
   const totals = data.reduce((acc, curr) => ({
@@ -128,13 +136,13 @@ const SpendingChart: React.FC = () => {
             <div className="flex items-center space-x-2">
               <ArrowDownRight className="h-4 w-4 text-indigo-600" />
               <p className="text-indigo-600">
-                Spending: ${payload[0].value.toLocaleString()}
+                Spending: {formatCurrency(payload[0].value)}
               </p>
             </div>
             <div className="flex items-center space-x-2">
               <ArrowUpRight className="h-4 w-4 text-emerald-600" />
               <p className="text-emerald-600">
-                Income: ${payload[1].value.toLocaleString()}
+                Income:  {formatCurrency(payload[1].value)}
               </p>
             </div>
           </div>
@@ -144,7 +152,7 @@ const SpendingChart: React.FC = () => {
     return null;
   };
 
-  const CustomLegend = ({ payload }: any) => {
+  const CustomLegend = () => {
     return (
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-indigo-50 rounded-lg p-4">
@@ -153,7 +161,7 @@ const SpendingChart: React.FC = () => {
             <span className="text-sm font-medium text-gray-600">Total Spending</span>
           </div>
           <p className="text-lg font-semibold text-gray-900">
-            ${totals.spending.toLocaleString()}
+            {formatCurrency(totals.spending)}
           </p>
         </div>
         <div className="bg-emerald-50 rounded-lg p-4">
@@ -162,7 +170,7 @@ const SpendingChart: React.FC = () => {
             <span className="text-sm font-medium text-gray-600">Total Income</span>
           </div>
           <p className="text-lg font-semibold text-gray-900">
-            ${totals.income.toLocaleString()}
+            {formatCurrency(totals.income)}
           </p>
         </div>
       </div>
@@ -213,7 +221,7 @@ const SpendingChart: React.FC = () => {
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter= {(value) => formatCurrency(value)}
             />
             
             <Tooltip 

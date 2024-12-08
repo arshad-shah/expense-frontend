@@ -5,6 +5,8 @@ import { ProfileForm } from "./Components/ProfileForm";
 import { getUser, updateUser } from "@/services/userService"; // Import your user service
 import { Button } from "@/components/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import PageLoader from "@/components/PageLoader";
+import ErrorState from "@/components/ErrorState";
 
 const Profile: React.FC = () => {
   const { user: authUser } = useAuth(); // Assuming you're using Firebase Auth
@@ -56,25 +58,13 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading profile...</p>
-        </div>
-      </div>
+      <PageLoader text="Loading profile..." />
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <p className="text-sm text-red-600">{error}</p>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            Retry
-          </Button>
-        </div>
-      </div>
+      <ErrorState message="Failed to load profile" onRetry={() => window.location.reload()} />
     );
   }
 

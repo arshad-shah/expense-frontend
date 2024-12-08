@@ -12,7 +12,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { updateTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts } from "@/services/accountService";
+import { getAccounts } from "@/services/AccountService";
 import { getCategories } from "@/services/CategoryService";
 import type { Transaction, Account, Category } from "@/types";
 
@@ -60,22 +60,44 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     fetchData();
   }, [user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await updateTransaction(transaction.id, {
-        ...formData,
-        userId: user?.id as string,
-      });
-      onUpdate();
-      onClose();
-    } catch (error) {
-      console.error("Error updating transaction:", error);
-    } finally {
-      setLoading(false);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    // Find the selected account
+    const selectedAccount = accounts.find(
+      (account) => account.id === formData.accountId
+    );
+
+    if (!selectedAccount) {
+      alert("Invalid account selected.");
+      return;
     }
-  };
+
+    // Check if the transaction amount exceeds the account balance
+    if (formData.type === "EXPENSE" && formData.amount > selectedAccount.balance) {
+      alert(
+        `Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`
+      );
+      return;
+    }
+
+    // Proceed with updating the transaction
+    await updateTransaction(transaction.id, {
+      ...formData,
+      userId: user?.id as string,
+    });
+
+    onUpdate();
+    onClose();
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Edit Transaction">

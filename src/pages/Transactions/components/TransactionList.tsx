@@ -79,7 +79,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
   }
 
   const ActionMenu = ({ transaction }: { transaction: Transaction }) => (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-left z-99999">
 
       <Button
         onClick={(e) => {

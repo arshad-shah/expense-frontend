@@ -1,33 +1,29 @@
 import React from 'react';
-import { Filter, Download, Plus } from 'lucide-react';
+import { Filter, Plus } from 'lucide-react';
 import { Button } from '@/components/Button';
 
-interface TransactionHeaderProps {
+interface BudgetHeaderProps {
   onOpenFilter: () => void;
-  onExport: () => void;
-  onAddTransaction: () => void;
-  disableAdd?: boolean;
+  onAddBudget: () => void;
 }
 
-const TransactionHeader: React.FC<TransactionHeaderProps> = ({
+export const BudgetHeader: React.FC<BudgetHeaderProps> = ({
   onOpenFilter,
-  onExport,
-  onAddTransaction,
-  disableAdd = false
+  onAddBudget,
 }) => {
   return (
     <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
       <div className="flex-1 min-w-0">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-          Transactions
+          Budgets
         </h1>
         <p className="mt-1 text-sm text-gray-500 hidden sm:block">
-          Manage your income and expenses
+          Track and manage your spending limits
         </p>
       </div>
       
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        {/* Mobile view: Action buttons in a grid */}
+        {/* Mobile view */}
         <div className="grid grid-cols-2 gap-3 sm:hidden">
           <Button
             variant="secondary"
@@ -39,27 +35,17 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
             Filters
           </Button>
           <Button
-            variant="secondary"
-            size="sm"
-            onClick={onExport}
-            className="w-full"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button
             variant="info"
             size="sm"
-            onClick={onAddTransaction}
+            onClick={onAddBudget}
             className="w-full col-span-2"
-            disabled={disableAdd}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
+            Add Budget
           </Button>
         </div>
 
-        {/* Desktop view: Action buttons in a row */}
+        {/* Desktop view */}
         <div className="hidden sm:flex sm:items-center sm:space-x-3">
           <Button
             variant="secondary"
@@ -70,26 +56,15 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
             Filters
           </Button>
           <Button
-            variant="secondary"
-            size="md"
-            onClick={onExport}
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Export
-          </Button>
-          <Button
             variant="info"
             size="md"
-            onClick={onAddTransaction}
-            disabled={disableAdd}
+            onClick={onAddBudget}
           >
             <Plus className="h-5 w-5 mr-2" />
-            Add Transaction
+            Add Budget
           </Button>
         </div>
       </div>
     </div>
   );
 };
-
-export default TransactionHeader;

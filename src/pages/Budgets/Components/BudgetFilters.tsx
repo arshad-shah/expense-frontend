@@ -1,106 +1,223 @@
-import React, { useState } from "react";
-import { DateRange, BudgetFilters, BudgetPeriod } from "@/types";
-import { Filter } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Dialog } from "@/components/Dialog";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/Select";
-import { Input } from "@/components/Input";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
+import { Calendar, Clock, CheckCircle, RefreshCw } from "lucide-react";
+import type { BudgetFilters as FilterType, BudgetPeriod } from "@/types";
 
 interface BudgetFiltersProps {
-  filters: BudgetFilters;
-  onFiltersChange: (filters: BudgetFilters) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  filters: FilterType;
+  onApplyFilters: (filters: FilterType) => void;
 }
 
-export const BudgetFiltersComponent: React.FC<BudgetFiltersProps> = ({ filters, onFiltersChange }) => {
-  const [localFilters, setLocalFilters] = useState<BudgetFilters>(filters);
+export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
+  isOpen,
+  onClose,
+  filters,
+  onApplyFilters,
+}) => {
+  const [localFilters, setLocalFilters] = useState<FilterType>(filters);
   const periods: BudgetPeriod[] = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
 
-  const handleFilterChange = (changes: Partial<BudgetFilters>) => {
-    const newFilters = { ...localFilters, ...changes };
-    setLocalFilters(newFilters);
-    onFiltersChange(newFilters);
+  // Ensure dates are properly formatted when component mounts or filters change
+  useEffect(() => {
+    const initialDateRange = {
+      startDate: filters.dateRange?.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+      endDate: filters.dateRange?.endDate || new Date().toISOString()
+    };
+
+    setLocalFilters({
+      ...filters,
+      dateRange: initialDateRange
+    });
+  }, [filters]);
+
+  const handleApply = () => {
+    // Ensure dates are in ISO format before applying
+    const formattedFilters = {
+      ...localFilters,
+      dateRange: {
+        startDate: localFilters.dateRange?.startDate 
+          ? new Date(localFilters.dateRange.startDate).toISOString()
+          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+        endDate: localFilters.dateRange?.endDate
+          ? new Date(localFilters.dateRange.endDate).toISOString()
+          : new Date().toISOString()
+      }
+    };
+    onApplyFilters(formattedFilters);
+    onClose();
+  };
+
+  const handleReset = () => {
+    const defaultFilters: FilterType = {
+      dateRange: {
+        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+        endDate: new Date().toISOString(),
+      },
+    };
+    setLocalFilters(defaultFilters);
+    onApplyFilters(defaultFilters);
+    onClose();
+  };
+
+  const handleDateRangeChange = (dateRange: { startDate: string; endDate: string }) => {
+    try {
+      // Ensure both dates are valid before updating
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      
+      setLocalFilters(prev => ({
+        ...prev,
+        dateRange: {
+          startDate: start.toISOString(),
+          endDate: end.toISOString()
+        }
+      }));
+    } catch (error) {
+      console.error('Invalid date format:', error);
+    }
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (localFilters.dateRange?.startDate || localFilters.dateRange?.endDate) count++;
+    if (localFilters.period) count++;
+    if (localFilters.isActive) count++;
+    return count;
   };
 
   return (
-    <div className="rounded-lg bg-white shadow-md p-6">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <Filter className="h-5 w-5 text-teal-600" />
-        <h3 className="text-lg font-bold text-gray-900">Filters</h3>
-      </div>
-
-      {/* Filters Section */}
+    <Dialog isOpen={isOpen} onClose={onClose} title="Filter Budgets">
       <div className="space-y-6">
-        {/* Period Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Period</label>
-          <Select
-            value={localFilters.period || "ALL_PERIODS"} // Default to "ALL_PERIODS" if no value is set
-            onValueChange={(value) =>
-              handleFilterChange({ period: value === "ALL_PERIODS" ? undefined : (value as BudgetPeriod) })
-            }
+        {/* Header with active filters count */}
+        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Budget Filters</h2>
+            <p className="text-sm text-gray-500">
+              {getActiveFiltersCount()} active filters
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="text-gray-500 hover:text-gray-700"
           >
-            <SelectTrigger className="mt-2">
-              <SelectValue placeholder="All Periods" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="ALL_PERIODS">All Periods</SelectItem>
-                {periods.map((period) => (
-                  <SelectItem key={period} value={period}>
-                    {period.charAt(0) + period.slice(1).toLowerCase()}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reset All
+          </Button>
         </div>
 
-        {/* Date Range Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Date Range</label>
-          <div className="mt-2 grid grid-cols-2 gap-4">
-            <Input
-              type="date"
-              value={localFilters.dateRange?.startDate || ""}
-              onChange={(e) =>
-                handleFilterChange({
-                  dateRange: { ...localFilters.dateRange, startDate: e.target.value } as DateRange,
+        {/* Filters Grid */}
+        <div className="grid gap-6">
+          {/* Date Range Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-gray-700">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <h3 className="font-medium">Date Range</h3>
+            </div>
+            <DateRangePicker
+              dateRange={localFilters.dateRange || {
+                startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+                endDate: new Date().toISOString()
+              }}
+              onChange={handleDateRangeChange}
+            />
+          </div>
+
+          {/* Period Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-gray-700">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <h3 className="font-medium">Budget Period</h3>
+            </div>
+            <Select
+              value={localFilters.period || "ALL"}
+              onValueChange={(value) =>
+                setLocalFilters({
+                  ...localFilters,
+                  period: value === "ALL" ? undefined : value as BudgetPeriod,
                 })
               }
-            />
-            <Input
-              type="date"
-              value={localFilters.dateRange?.endDate || ""}
-              onChange={(e) =>
-                handleFilterChange({
-                  dateRange: { ...localFilters.dateRange, endDate: e.target.value } as DateRange,
-                })
-              }
-            />
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All periods" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="ALL">All periods</SelectItem>
+                  {periods.map((period) => (
+                    <SelectItem key={period} value={period}>
+                      {period.charAt(0) + period.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-gray-700">
+              <CheckCircle className="h-4 w-4 text-gray-500" />
+              <h3 className="font-medium">Budget Status</h3>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="active"
+                  checked={localFilters.isActive || false}
+                  onCheckedChange={(checked) =>
+                    setLocalFilters({
+                      ...localFilters,
+                      isActive: checked as boolean,
+                    })
+                  }
+                />
+                <div className="flex flex-col">
+                  <label
+                    htmlFor="active"
+                    className="text-sm font-medium text-gray-700 cursor-pointer"
+                  >
+                    Active Budgets Only
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Show budgets that are currently active
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Active Budgets Filter */}
-        <div className="flex items-center">
-          <Checkbox
-            checked={localFilters.isActive || false}
-            onCheckedChange={(checked) =>
-              handleFilterChange({ isActive: checked === true })
-            }
-            id="active-only"
-          />
-          <label htmlFor="active-only" className="ml-3 text-sm text-gray-700">
-            Show active budgets only
-          </label>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleApply} className="bg-indigo-600 hover:bg-indigo-700">
+            Apply Filters
+          </Button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 };
+
+export default BudgetFilters;

@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Budget, BudgetFilters, BudgetPerformance } from "@/types";
-import { getBudgets } from "@/services/BudgetService"; // Adjust the path as necessary
-import { BudgetFiltersComponent } from "./Components/BudgetFilters";
-import { BudgetCard } from "./Components/BudgetCard";
-import AddBudgetModal from "./Components/AddBudgetModal"; // Adjust the path
+import { getBudgets } from "@/services/BudgetService";
+import { getTransactions } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
+import { BudgetFilters as BudgetFiltersComponent } from "./Components/BudgetFilters";
+import { BudgetCard } from "./Components/BudgetCard";
+import AddBudgetModal from "./Components/AddBudgetModal";
+import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
+import PageLoader from "@/components/PageLoader";
+import { BudgetHeader } from "./Components/BudgetHeader";
 
 const Budgets: React.FC = () => {
   const { user } = useAuth();
@@ -16,238 +21,110 @@ const Budgets: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false); // Modal visibility state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const userId = user?.id!;
 
-  const fetchBudgets = async () => {
+  const fetchBudgetsAndPerformance = async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
-      setError(null);
-
-      // Fetch budgets from Firebase
       const fetchedBudgets = await getBudgets(userId, filters);
-      // Mock data for budgets
-      const fetchedBudgetsMocked: Budget[] = [
-        {
-          id: "1",
-          name: "Groceries",
-          amount: 500,
-          period: "MONTHLY",
-          startDate: "2023-01-01",
-          endDate: "2023-01-31",
-          isActive: true,
-          categories: [
-            {
-              budget: {
-                id: "1",
-                name: "Groceries",
-                amount: 500,
-                period: "MONTHLY",
-                startDate: "2023-01-01",
-                endDate: "2023-01-31",
-                isActive: true,
-              },
-              category: {
-                id: "1",
-                name: "Food",
-                type: "Expense",
-                icon: "🍔",
-                color: "#FF6347",
-                isDefault: true,
-                isActive: true,
-              },
-              allocatedAmount: 300,
-              spentAmount: 250,
-            },
-          ],
-        },
-        {
-          id: "2",
-          name: "Utilities",
-          amount: 200,
-          period: "MONTHLY",
-          startDate: "2023-01-01",
-          endDate: "2023-01-31",
-          isActive: true,
-          categories: [
-            {
-              budget: {
-                id: "2",
-                name: "Utilities",
-                amount: 200,
-                period: "MONTHLY",
-                startDate: "2023-01-01",
-                endDate: "2023-01-31",
-                isActive: true,
-              },
-              category: {
-                id: "2",
-                name: "Electricity",
-                type: "Expense",
-                icon: "💡",
-                color: "#FFD700",
-                isDefault: true,
-                isActive: true,
-              },
-              allocatedAmount: 100,
-              spentAmount: 80,
-            },
-          ],
-        },
-        {
-          id: "3",
-          name: "Entertainment",
-          amount: 300,
-          period: "MONTHLY",
-          startDate: "2023-01-01",
-          endDate: "2023-01-31",
-          isActive: true,
-          categories: [
-            {
-              budget: {
-          id: "3",
-          name: "Entertainment",
-          amount: 300,
-          period: "MONTHLY",
-          startDate: "2023-01-01",
-          endDate: "2023-01-31",
-          isActive: true,
-              },
-              category: {
-          id: "3",
-          name: "Movies",
-          type: "Expense",
-          icon: "🎬",
-          color: "#FF4500",
-          isDefault: true,
-          isActive: true,
-              },
-              allocatedAmount: 150,
-              spentAmount: 120,
-            },
-            {
-              budget: {
-          id: "3",
-          name: "Entertainment",
-          amount: 300,
-          period: "MONTHLY",
-          startDate: "2023-01-01",
-          endDate: "2023-01-31",
-          isActive: true,
-              },
-              category: {
-          id: "4",
-          name: "Games",
-          type: "Expense",
-          icon: "🎮",
-          color: "#32CD32",
-          isDefault: true,
-          isActive: true,
-              },
-              allocatedAmount: 150,
-              spentAmount: 100,
-            },
-          ],
-        },
-      ];
-      // Update state
-      setBudgets(fetchedBudgets);
+      const categoryIds = fetchedBudgets.flatMap(budget =>
+        budget.categories?.map(cat => cat.category.id) || []
+      );
 
-      // Optionally, calculate performance metrics based on fetched data
-      const calculatedPerformance = fetchedBudgets.map((budget) => {
-        const spent = budget.categories?.reduce((acc, cat) => acc + cat.spentAmount, 0) || 0;
+      const transactions = await getTransactions({
+        dateRange: filters.dateRange,
+        categoryIds,
+      });
+
+      const calculatedPerformance = fetchedBudgets.map(budget => {
+        const relevantTransactions = transactions.filter(t =>
+          budget.categories?.some(cat => cat.category.id === t.category.id)
+        );
+
+        const spent = relevantTransactions.reduce(
+          (total, transaction) => total + transaction.amount,
+          0
+        );
+
         return {
           budgetId: budget.id,
-          budgetName: budget.name, // Assuming budget has a name property
-          allocated: budget.amount, // Assuming budget has an amount property
+          budgetName: budget.name,
+          allocated: budget.amount,
           spent,
           remaining: budget.amount - spent,
           percentageUsed: (spent / budget.amount) * 100,
-          status: spent > budget.amount ? "EXCEEDED" : (spent / budget.amount) * 100 > 80 ? "WARNING" : "ON_TRACK" as "EXCEEDED" | "WARNING" | "ON_TRACK",
+          status:
+            spent > budget.amount
+              ? "EXCEEDED" as "EXCEEDED"
+              : (spent / budget.amount) * 100 > 80
+              ? "WARNING" as "WARNING"
+              : "ON_TRACK" as "ON_TRACK",
         };
       });
 
+      setBudgets(fetchedBudgets);
       setPerformance(calculatedPerformance);
     } catch (err) {
-      console.error("Error fetching budgets:", err);
-      setError("Failed to fetch budgets. Please try again later.");
+      console.error("Error fetching budgets and performance:", err);
+      setError("Failed to fetch budget data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBudgets();
+    fetchBudgetsAndPerformance();
   }, [filters, userId]);
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-teal-600"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading budgets...</p>
-        </div>
-      </div>
+      <PageLoader text="Loading budgets..." />
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600">{error}</p>
-        </div>
-      </div>
+      <ErrorState message={error}  onRetry={fetchBudgetsAndPerformance} />
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900">Manage Your Budgets</h1>
-          <p className="text-sm text-gray-600 mt-2">Track your expenses and stay on top of your financial goals.</p>
-        </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)} // Open the modal
-          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-        >
-          Create Budget
-        </button>
-      </div>
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <BudgetHeader  onOpenFilter={() => setIsFilterOpen(true)} onAddBudget={() => setIsAddModalOpen(true)} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters */}
-        <div className="lg:col-span-1">
-          <BudgetFiltersComponent filters={filters} onFiltersChange={setFilters} />
-        </div>
+      {/* Filters */}
+      <BudgetFiltersComponent filters={filters} onApplyFilters={setFilters} isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
 
-        {/* Budget Cards */}
-        <div className="lg:col-span-3">
-          {budgets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
-              <p className="text-gray-600">No budgets found. Start tracking your expenses today!</p>
-            </div>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {budgets.map((budget) => (
-                <BudgetCard
-                  key={budget.id}
-                  budget={budget}
-                  performance={performance.find((p) => p.budgetId === budget.id)!}
-                />
-              ))}
-            </div>
-          )}
+      {/* Budgets */}
+      {budgets.length === 0 ? (
+        <EmptyState
+          heading="No Budgets Found"
+          message="Start managing your expenses by creating your first budget."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {budgets.map(budget => (
+            <BudgetCard
+              key={budget.id}
+              budget={budget}
+              performance={performance.find(p => p.budgetId === budget.id)!}
+              onUpdate={fetchBudgetsAndPerformance} // Pass the callback here
+            />
+          ))}
         </div>
-      </div>
+      )}
 
       {/* Add Budget Modal */}
       <AddBudgetModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)} // Close the modal
-        onBudgetAdded={fetchBudgets} // Refresh budgets after adding
+        onClose={() => setIsAddModalOpen(false)}
+        onBudgetAdded={fetchBudgetsAndPerformance}
       />
     </div>
   );

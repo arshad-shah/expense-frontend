@@ -17,6 +17,8 @@ import type { Account } from "../../types";
 import { getAccounts } from "@/services/AccountService";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/Button";
+import PageLoader from "@/components/PageLoader";
+import ErrorState from "@/components/ErrorState";
 
 const Accounts: React.FC = () => {
   const { user } = useAuth();
@@ -61,25 +63,32 @@ const Accounts: React.FC = () => {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: user?.currency || 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   const getTotalBalance = () => {
-    return accounts.reduce((sum, account) => sum + account.balance, 0);
+    return formatCurrency(accounts.reduce((sum, account) => sum + account.balance, 0));
   };
 
   
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
+      <PageLoader text="Loading your accounts..." />
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 text-red-700 rounded-lg flex items-center">
-        <AlertCircle className="h-5 w-5 mr-2" />
-        {error}
-      </div>
+      <ErrorState
+        message="Failed to load accounts"
+        onRetry={fetchAccounts}
+        />
     );
   }
 
@@ -129,10 +138,7 @@ const Accounts: React.FC = () => {
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
           <h2 className="text-lg font-medium opacity-90">Total Balance</h2>
           <p className="text-3xl font-bold mt-2">
-            ${getTotalBalance().toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {getTotalBalance()}
           </p>
           <p className="text-sm opacity-75 mt-1">
             Across {accounts.length} account{accounts.length !== 1 ? "s" : ""}

@@ -120,6 +120,7 @@ export const createUser = async (
   };
 
   const defaultCategories = [
+    // Income Categories
     { name: "Salary", type: "INCOME", icon: "dollar", color: "#4CAF50" },
     {
       name: "Other Income",
@@ -128,24 +129,85 @@ export const createUser = async (
       color: "#8BC34A",
     },
     {
+      name: "Investments",
+      type: "INCOME",
+      icon: "trending-up",
+      color: "#66BB6A",
+    },
+    { name: "Freelance", type: "INCOME", icon: "briefcase", color: "#81C784" },
+    { name: "Rental Income", type: "INCOME", icon: "home", color: "#A5D6A7" },
+
+    // Essential Expenses
+    {
       name: "Food & Dining",
       type: "EXPENSE",
       icon: "coffee",
       color: "#FF5722",
     },
-    { name: "Transportation", type: "EXPENSE", icon: "car", color: "#2196F3" },
     {
-      name: "Shopping",
+      name: "Groceries",
       type: "EXPENSE",
-      icon: "shopping-bag",
-      color: "#9C27B0",
+      icon: "shopping-cart",
+      color: "#FF7043",
     },
+    { name: "Transportation", type: "EXPENSE", icon: "car", color: "#2196F3" },
     {
       name: "Bills & Utilities",
       type: "EXPENSE",
       icon: "file-text",
       color: "#607D8B",
     },
+    { name: "Rent/Mortgage", type: "EXPENSE", icon: "home", color: "#455A64" },
+
+    // Lifestyle & Shopping
+    {
+      name: "Shopping",
+      type: "EXPENSE",
+      icon: "shopping-bag",
+      color: "#9C27B0",
+    },
+    { name: "Entertainment", type: "EXPENSE", icon: "film", color: "#E91E63" },
+    {
+      name: "Health & Fitness",
+      type: "EXPENSE",
+      icon: "heart",
+      color: "#F44336",
+    },
+    { name: "Personal Care", type: "EXPENSE", icon: "user", color: "#EC407A" },
+
+    // Services & Education
+    { name: "Education", type: "EXPENSE", icon: "book", color: "#3F51B5" },
+    {
+      name: "Subscriptions",
+      type: "EXPENSE",
+      icon: "repeat",
+      color: "#5C6BC0",
+    },
+    { name: "Insurance", type: "EXPENSE", icon: "shield", color: "#7986CB" },
+
+    // Savings & Investments
+    { name: "Savings", type: "EXPENSE", icon: "piggy-bank", color: "#009688" },
+    {
+      name: "Investments",
+      type: "EXPENSE",
+      icon: "bar-chart",
+      color: "#26A69A",
+    },
+    {
+      name: "Debt Payment",
+      type: "EXPENSE",
+      icon: "credit-card",
+      color: "#4DB6AC",
+    },
+
+    // Miscellaneous
+    {
+      name: "Gifts & Donations",
+      type: "EXPENSE",
+      icon: "gift",
+      color: "#FFC107",
+    },
+    { name: "Travel", type: "EXPENSE", icon: "plane", color: "#00BCD4" },
     {
       name: "Others",
       type: "EXPENSE",

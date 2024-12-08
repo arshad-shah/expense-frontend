@@ -31,12 +31,34 @@ export const Dropdown = ({
   width = 'sm',
   className,
 }: DropdownProps) => {
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
   React.useEffect(() => {
-    const handleClickOutside = () => onClose();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && show) {
+        onClose();
+      }
+    };
+
     if (show) {
-      document.addEventListener('click', handleClickOutside);
+      // Small delay to prevent immediate closing
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+        document.addEventListener('keydown', handleEscapeKey);
+      }, 0);
+
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('keydown', handleEscapeKey);
+      };
     }
-    return () => document.removeEventListener('click', handleClickOutside);
   }, [show, onClose]);
 
   const sizes = {
@@ -99,9 +121,10 @@ export const Dropdown = ({
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
+          ref={dropdownRef}
+          initial={{ opacity: 0, scale: 0.95, y: -5 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -5 }}
           transition={{
             duration: 0.15,
             ease: 'easeOut',
@@ -126,8 +149,10 @@ export const Dropdown = ({
                     whileTap={{ scale: 0.98 }}
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       if (!item.disabled) {
                         item.onClick();
+                        onClose();
                       }
                     }}
                     className={cn(

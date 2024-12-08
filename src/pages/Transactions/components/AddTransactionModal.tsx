@@ -12,7 +12,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { createTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts } from "@/services/AccountService";
+import { getAccounts, updateAccount } from "@/services/AccountService";
 import { getCategories } from "@/services/CategoryService";
 import type { Account, Category } from "@/types";
 
@@ -69,13 +69,46 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
     try {
+      // Find the selected account
+      const selectedAccount = accounts.find(
+        (account) => account.id === formData.accountId
+      );
+
+      if (!selectedAccount) {
+        alert("Invalid account selected.");
+        return;
+      }
+
+      // Check if the transaction amount exceeds the account balance
+      if (formData.type === "EXPENSE" && formData.amount > selectedAccount.balance) {
+        alert(
+          `Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`
+        );
+        return;
+      }
+
+      // Proceed with creating the transaction
       await createTransaction({
         ...formData,
         userId: user?.id as string,
       });
+
+      // make sure we remove the amount from the account balance
+      if (formData.type === "EXPENSE") {
+        await updateAccount(selectedAccount.id, {
+          balance: selectedAccount.balance - formData.amount,
+        });
+      } else {
+        await updateAccount(selectedAccount.id, {
+          balance: selectedAccount.balance + formData.amount,
+        });
+      }
+
       onTransactionAdded();
       onClose();
+
       // Reset form
       setFormData({
         accountId: accounts[0]?.id || "",
@@ -92,30 +125,42 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     }
   };
 
+
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Add New Transaction">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Account Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Account</label>
-          <Select
-            value={formData.accountId}
-            onValueChange={(value) => setFormData({ ...formData, accountId: value })}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Account Selection */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Account</label>
+        <Select
+          value={formData.accountId}
+          onValueChange={(value) => setFormData({ ...formData, accountId: value })}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name} (Balance: ${account.balance.toFixed(2)})
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        {/* Warning */}
+        {formData.type === "EXPENSE" && formData.amount > 0 && (
+          <p className="text-sm text-red-600 mt-1">
+            {accounts && accounts.find((acc) => acc.id === formData.accountId)?.balance !== undefined &&
+              accounts.find((acc) => acc.id === formData.accountId)!.balance < formData.amount &&
+              `Insufficient funds! The available balance is ${
+                accounts.find((acc) => acc.id === formData.accountId)!.balance.toFixed(2)
+              }.`}
+          </p>
+        )}
+      </div>
+
 
         {/* Transaction Type */}
         <div>

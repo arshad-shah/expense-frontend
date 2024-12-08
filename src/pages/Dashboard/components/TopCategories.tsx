@@ -20,6 +20,8 @@ const TopCategories: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const { user } = useAuth();
 
+  
+
   useEffect(() => {
     const fetchCategoryData = async () => {
       if (!user?.id) return;
@@ -84,13 +86,13 @@ const TopCategories: React.FC = () => {
       .slice(0, 5);
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: user?.currency || 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   if (loading) {

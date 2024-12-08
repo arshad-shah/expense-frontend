@@ -62,13 +62,12 @@ const RecentTransactions: React.FC = () => {
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
   };
-
-  const formatCurrency = (amount: number, type: TransactionType) => {
-    const formatted = new Intl.NumberFormat('en-US', {
+  const formatCurrency = (amount: number , type: TransactionType) => {
+    const formatted =  new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: user?.currency || 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount);
 
     return `${type === 'INCOME' ? '+' : '-'}${formatted}`;

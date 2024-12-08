@@ -21,6 +21,7 @@ const BudgetOverview: React.FC = () => {
   const [error, setError] = useState('');
   const { user } = useAuth();
 
+
   useEffect(() => {
     const fetchBudgetData = async () => {
       if (!user?.id) return;
@@ -56,7 +57,7 @@ const BudgetOverview: React.FC = () => {
             limit: budget.amount,
             categoryColor: budget.categories?.[0]?.category.color,
             // Use the currency from the first relevant transaction's account, fallback to user's currency
-            currency: relevantTransactions[0]?.account.currency || user?.currency || 'USD'
+            currency: user?.currency || 'USD'
           };
         });
 
@@ -86,29 +87,13 @@ const BudgetOverview: React.FC = () => {
     }, 0);
   };
 
-  const formatCurrency = (amount: number, currency?: string) => {
-    try {
-      const currencyCode = currency || 'USD';
-      if (!/^[A-Z]{3}$/.test(currencyCode)) {
-        return new Intl.NumberFormat('en-US', {
-          style: 'decimal',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(amount);
-      }
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount);
-    } catch (error) {
-      return new Intl.NumberFormat('en-US', {
-        style: 'decimal',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount);
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: user?.currency || 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   // Calculate total budget and spent
@@ -303,11 +288,11 @@ const BudgetOverview: React.FC = () => {
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <span className="text-sm font-medium text-gray-900">
-                      {formatCurrency(budget.spent, budget.currency)}
+                      {formatCurrency(budget.spent)}
                     </span>
                     <span className="text-xs text-gray-400 mx-1">/</span>
                     <span className="text-sm text-gray-500">
-                      {formatCurrency(budget.limit, budget.currency)}
+                      {formatCurrency(budget.limit)}
                     </span>
                   </div>
                 </div>
@@ -316,7 +301,7 @@ const BudgetOverview: React.FC = () => {
                   <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     <span>
-                      Over budget by {formatCurrency(budget.spent - budget.limit, budget.currency)}
+                      Over budget by {formatCurrency(budget.spent - budget.limit)}
                     </span>
                   </div>
                 )}
