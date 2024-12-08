@@ -35,8 +35,8 @@ check_mkcert() {
             print_message "Fedora: sudo dnf install mkcert"
             exit 1
         elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-            print_message "Please install mkcert using Chocolatey:"
-            print_message "choco install mkcert"
+            print_message "Installing mkcert using Chocolatey..."
+            choco install mkcert -y
             exit 1
         else
             print_error "Unsupported operating system"
