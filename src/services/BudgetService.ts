@@ -65,8 +65,10 @@ export const getBudgets = async (
         );
 
         return {
-          budget: { id: doc.id, ...data },
-          category: categoryRef.data() as Category,
+          category:{
+            id: categoryRef.id,
+            ...categoryRef.data()
+          },
           allocatedAmount: categoryData.allocatedAmount,
           spentAmount: categoryData.spentAmount || 0,
         } as BudgetCategory;

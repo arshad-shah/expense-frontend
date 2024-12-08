@@ -3,8 +3,8 @@ import { MoreVertical, Edit2, Trash2 } from "lucide-react";
 import type { Account } from "@/types";
 import EditAccountModal from "./EditAccountModal";
 import { deleteAccount } from "@/services/AccountService";
-import { Dialog } from "@/components/Dialog";
-import { Button } from "@/components/Button"; // Your custom Button component
+import { Button } from "@/components/Button";
+import { Dropdown, DropdownItemType } from "@/components/Dropdown";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 interface AccountCardProps {
@@ -29,18 +29,25 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
     }
   };
 
-  const handleClickOutside = (e: MouseEvent) => {
-    if (showDropdown) {
-      setShowDropdown(false);
+  const dropdownItems: DropdownItemType[] = [
+    {
+      icon: Edit2,
+      label: "Edit Account",
+      onClick: () => {
+        setShowDropdown(false);
+        setShowEditModal(true);
+      },
+    },
+    {
+      icon: Trash2,
+      label: "Delete Account",
+      onClick: () => {
+        setShowDropdown(false);
+        setShowDeleteDialog(true);
+      },
+      variant: "danger",
     }
-  };
-
-  React.useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [showDropdown]);
+  ];
 
   return (
     <>
@@ -57,45 +64,31 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
               </div>
             </div>
             <div className="relative">
-              <button
+              <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowDropdown(!showDropdown);
                 }}
-                className="p-2 hover:bg-gray-50 rounded-lg"
                 aria-label="Account options"
+                size="icon"
+                variant="ghost"
+                className="hover:bg-gray-100"
               >
-                <MoreVertical className="h-5 w-5 text-gray-400" />
-              </button>
-              {showDropdown && (
-                <div
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10 border border-gray-100"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      setShowEditModal(true);
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit Account
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      setShowDeleteDialog(true);
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
-                  </button>
-                </div>
-              )}
+                <MoreVertical className="h-5 w-5 text-gray-500" />
+              </Button>
+              
+              <Dropdown
+                show={showDropdown}
+                onClose={() => setShowDropdown(false)}
+                items={dropdownItems}
+                position="right"
+                size="md"
+                width="md"
+                className="shadow-xl shadow-gray-200/20"
+              />
             </div>
           </div>
+          
           <div className="mt-4">
             <p className="text-2xl font-semibold text-gray-900">
               {new Intl.NumberFormat("en-US", {
@@ -120,7 +113,12 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
         onSave={onUpdate}
       />
 
-      <DeleteConfirmationDialog isOpen={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} onConfirm={handleDelete} entityName={account.name} />
+      <DeleteConfirmationDialog 
+        isOpen={showDeleteDialog} 
+        onClose={() => setShowDeleteDialog(false)} 
+        onConfirm={handleDelete} 
+        entityName={account.name}
+      />
     </>
   );
 };

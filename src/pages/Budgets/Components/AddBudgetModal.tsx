@@ -52,6 +52,34 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     fetchCategories();
   }, [user]);
 
+
+  const calculateEndDate = (startDate: string, period: string): string => {
+    const start = new Date(startDate);
+    let end: Date;
+
+    switch (period) {
+      case "DAILY":
+        end = new Date(start);
+        end.setDate(start.getDate() + 1);
+        break;
+      case "WEEKLY":
+        end = new Date(start);
+        end.setDate(start.getDate() + 7);
+        break;
+      case "MONTHLY":
+        end = new Date(start);
+        end.setMonth(start.getMonth() + 1);
+        break;
+      case "YEARLY":
+        end = new Date(start);
+        end.setFullYear(start.getFullYear() + 1);
+        break;
+      default:
+        end = new Date(start);
+    }
+
+    return end.toISOString().split("T")[0];
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -61,8 +89,8 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           name: formData.name,
           amount: formData.amount,
           period: formData.period,
-          startDate: formData.startDate,
-          endDate: formData.endDate || "",
+          startDate: formData.startDate.split("T")[0],
+          endDate: formData.endDate || calculateEndDate(formData.startDate, formData.period),
           userId: user?.id as string,
         },
         formData.categoryAllocations

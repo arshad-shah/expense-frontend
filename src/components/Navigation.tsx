@@ -1,7 +1,6 @@
-// src/components/Navigation.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Layout, 
   Home, 
@@ -9,18 +8,48 @@ import {
   DollarSign, 
   PieChart, 
   User, 
-  LogOut 
+  LogOut,
+  Menu,
+  X 
 } from 'lucide-react';
+import { Button } from '@/components/Button';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
-const Navigation: React.FC = () => {
+const Navigation = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Prevent scrolling when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   if (!user) return null;
 
   const handleLogout = async () => {
     try {
       await logout();
+      setIsMobileMenuOpen(false);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -33,64 +62,194 @@ const Navigation: React.FC = () => {
     { path: '/budgets', icon: PieChart, label: 'Budgets' },
   ];
 
-  const isActivePath = (path: string) => {
-    return location.pathname === path;
+  const isActivePath = (path) => location.pathname === path;
+
+  const NavLink = ({ item, isMobile = false }) => (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className="w-full sm:w-auto"
+    >
+      <Link
+        to={item.path}
+        onClick={() => isMobile && setIsMobileMenuOpen(false)}
+        className={cn(
+          "inline-flex items-center w-full px-3 sm:px-4 py-2.5 font-medium rounded-xl transition-all duration-200",
+          isActivePath(item.path)
+            ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200" 
+            : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50",
+          isMobile ? "text-base" : "text-sm lg:text-base"
+        )}
+      >
+        <item.icon className={cn(
+          "mr-2.5",
+          isMobile ? "h-5 w-5" : "h-4 w-4 lg:h-5 lg:w-5"
+        )} />
+        {item.label}
+      </Link>
+    </motion.div>
+  );
+
+  const menuVariants = {
+    closed: {
+      opacity: 0,
+      height: 0,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut"
+      }
+    },
+    open: {
+      opacity: 1,
+      height: "100vh",
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut",
+        staggerChildren: 0.07,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    closed: { x: -16, opacity: 0 },
+    open: { x: 0, opacity: 1 }
   };
 
   return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-center">
-              <Layout className="h-8 w-8 text-teal-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">ExpenseTracker</span>
-            </div>
-
-            {/* Navigation Items */}
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                    isActivePath(item.path)
-                      ? 'text-teal-600 bg-teal-50'
-                      : 'text-gray-600 hover:text-teal-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 mr-1.5" />
-                  {item.label}
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center flex-1">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex-shrink-0"
+              >
+                <Link to="/" className="flex items-center">
+                  <Layout className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-600" />
+                  <span className="ml-2 text-base sm:text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    ExpenseTracker
+                  </span>
                 </Link>
-              ))}
-            </div>
-          </div>
+              </motion.div>
 
-          {/* User Menu */}
-          <div className="flex items-center space-x-4">
-            <Link
-              to="/profile"
-              className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                isActivePath('/profile')
-                  ? 'text-teal-600 bg-teal-50'
-                  : 'text-gray-600 hover:text-teal-600 hover:bg-gray-50'
-              }`}
-            >
-              <User className="h-5 w-5 mr-1.5" />
-              Profile
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150"
-            >
-              <LogOut className="h-5 w-5 mr-1.5" />
-              Logout
-            </button>
+              <div className="hidden md:flex md:items-center md:ml-6 lg:ml-8 md:space-x-2 lg:space-x-3">
+                {navItems.map((item) => (
+                  <NavLink key={item.path} item={item} />
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden md:flex md:items-center md:space-x-2 lg:space-x-3">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link
+                  to="/profile"
+                  className={cn(
+                    "inline-flex items-center px-3 lg:px-4 py-2.5 text-sm lg:text-base font-medium rounded-xl transition-all duration-200",
+                    isActivePath('/profile')
+                      ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200"
+                      : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
+                  )}
+                >
+                  <User className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  Profile
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-sm lg:text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
+                >
+                  <LogOut className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  Logout
+                </Button>
+              </motion.div>
+            </div>
+
+            <div className="flex items-center md:hidden">
+              <motion.div whileTap={{ scale: 0.95 }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="h-9 w-9 p-0 inline-flex items-center justify-center rounded-xl hover:bg-indigo-50"
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={isMobileMenuOpen ? 'close' : 'menu'}
+                      initial={{ opacity: 0, rotate: -180 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 180 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {isMobileMenuOpen ? (
+                        <X className="h-5 w-5 text-indigo-600" />
+                      ) : (
+                        <Menu className="h-5 w-5 text-indigo-600" />
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </Button>
+              </motion.div>
+            </div>
           </div>
         </div>
-      </div>
-    </nav>
+
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial="closed"
+              animate="open"
+              exit="closed"
+              variants={menuVariants}
+              className="fixed inset-0 z-40 md:hidden bg-white/95 backdrop-blur-sm pt-14"
+            >
+              <motion.div 
+                className="h-full px-3 py-4 space-y-2 overflow-y-auto"
+                variants={menuVariants}
+              >
+                {navItems.map((item) => (
+                  <motion.div key={item.path} variants={itemVariants}>
+                    <NavLink item={item} isMobile />
+                  </motion.div>
+                ))}
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      "inline-flex w-full items-center px-3 sm:px-4 py-2.5 text-base font-medium rounded-xl transition-all duration-200",
+                      isActivePath('/profile')
+                        ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200"
+                        : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
+                    )}
+                  >
+                    <User className="h-5 w-5 mr-2.5" />
+                    Profile
+                  </Link>
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <Button
+                    variant="danger"
+                    onClick={handleLogout}
+                    className="w-full justify-start text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
+                  >
+                    <LogOut className="h-5 w-5 mr-2.5" />
+                    Logout
+                  </Button>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+      {/* Spacer for fixed navbar */}
+      <div className="h-14 sm:h-16" />
+    </>
   );
 };
 

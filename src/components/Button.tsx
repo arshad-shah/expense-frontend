@@ -1,6 +1,5 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
-// Custom Button Component
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | "primary"
@@ -10,8 +9,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     | "success"
     | "warning"
     | "info"
-    | "link";
-  size?: "sm" | "md" | "lg";
+    | "link"
+    | "ghost";
+  size?: "sm" | "md" | "lg" | "icon";
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -28,12 +28,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       warning: "bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-700 focus-visible:ring-yellow-400",
       info: "bg-teal-500 text-white hover:bg-teal-600 active:bg-teal-700 focus-visible:ring-teal-400",
       link: "text-indigo-600 hover:underline focus-visible:ring-indigo-500",
+      ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200 focus-visible:ring-gray-400",
     };
 
     const sizes = {
       sm: "h-8 px-3 text-sm",
       md: "h-10 px-4 text-base",
       lg: "h-12 px-6 text-lg",
+      icon: "h-10 w-10 p-2",
     };
 
     return (

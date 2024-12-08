@@ -10,23 +10,99 @@ import Profile from './pages/Profile';
 import Login from './pages/login';
 import Register from './pages/register';
 
+// Wrapper for authenticated pages with navigation and default layout
+const AuthenticatedLayout = ({ children }) => (
+  <>
+    <Navigation />
+    <main className="container w-full mx-auto px-4">
+      {children}
+    </main>
+  </>
+);
+
+// Wrapper for public pages with full height and no navigation
+const PublicLayout = ({ children }) => (
+  <main className="min-h-screen">
+    {children}
+  </main>
+);
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <main className="container mx-auto px-4 py-8">
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              <Route path="/accounts" element={<PrivateRoute><Accounts /></PrivateRoute>} />
-              <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
-              <Route path="/budgets" element={<PrivateRoute><Budgets /></PrivateRoute>} />
-              <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-            </Routes>
-          </main>
+          <Routes>
+            {/* Public routes */}
+            <Route 
+              path="/login" 
+              element={
+                <PublicLayout>
+                  <Login />
+                </PublicLayout>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <PublicLayout>
+                  <Register />
+                </PublicLayout>
+              } 
+            />
+
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Dashboard />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/accounts"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Accounts />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Transactions />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/budgets"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Budgets />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Profile />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+          </Routes>
         </div>
       </Router>
     </AuthProvider>

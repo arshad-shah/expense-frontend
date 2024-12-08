@@ -6,7 +6,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  doc,
+  doc as firestoreDoc,
   orderBy,
   limit as limitQuery,
   getDoc,
@@ -21,16 +21,11 @@ import type {
 } from "../types";
 
 export const getTransactions = async (
-  userId: string,
-  filters?: TransactionFilters
+  filters: TransactionFilters
 ): Promise<Transaction[]> => {
-  let q = query(
-    collection(db, "transactions"),
-    where("userId", "==", userId),
-    orderBy("transactionDate", "desc")
-  );
+  let q = query(collection(db, "transactions"));
 
-  if (filters?.dateRange) {
+  if (filters?.dateRange?.startDate && filters?.dateRange?.endDate) {
     q = query(
       q,
       where("transactionDate", ">=", filters.dateRange.startDate),
@@ -43,15 +38,61 @@ export const getTransactions = async (
   }
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+  const transactions = await Promise.all(
+    querySnapshot.docs.map(async (doc) => {
+      const transactionData = doc.data() as Transaction;
+      const [accountDoc, categoryDoc] = await Promise.all([
+        getDoc(firestoreDoc(db, "accounts", transactionData.accountId)),
+        getDoc(firestoreDoc(db, "categories", transactionData.categoryId)),
+      ]);
+      
+
+      if (accountDoc.exists() && categoryDoc.exists()) {
+        const accountData = accountDoc.data() as Account;
+        const categoryData = categoryDoc.data() as Category;
+        
+      return {
+        id: doc.id,
+        account: {
+          id: accountDoc.id,
+          name: accountData.name,
+          accountType: accountData.accountType,
+          bankName: accountData.bankName,
+          balance: accountData.balance,
+          currency: accountData.currency,
+          lastSync: accountData.lastSync,
+          isActive: accountData.isActive,
+        },
+        category: {
+          id: categoryDoc.id,
+          name: categoryData.name,
+          type: categoryData.type,
+          icon: categoryData.icon,
+          color: categoryData.color,
+          isDefault: categoryData.isDefault,
+          isActive: categoryData.isActive,
+        },
+        amount: transactionData.amount,
+        type: transactionData.type,
+        description: transactionData.description,
+        transactionDate: transactionData.transactionDate,
+        isRecurring: transactionData.isRecurring || false,
+        recurringPattern: transactionData.recurringPattern,
+        attachments: transactionData.attachments || [],
+      };
+      } else {
+        throw new Error("Related account or category not found");
+      }
+    })
   );
+
+  return transactions;
 };
 
 export const getTransactionById = async (
   transactionId: string
 ): Promise<Transaction | null> => {
-  const transactionRef = doc(db, "transactions", transactionId);
+  const transactionRef = firestoreDoc(db, "transactions", transactionId);
   const transactionSnap = await getDoc(transactionRef);
 
   if (!transactionSnap.exists()) {
@@ -66,8 +107,8 @@ export const createTransaction = async (
 ): Promise<Transaction> => {
   // Get related documents first
   const [accountDoc, categoryDoc] = await Promise.all([
-    getDoc(doc(db, "accounts", transactionInput.accountId)),
-    getDoc(doc(db, "categories", transactionInput.categoryId)),
+    getDoc(firestoreDoc(db, "accounts", transactionInput.accountId)),
+    getDoc(firestoreDoc(db, "categories", transactionInput.categoryId)),
   ]);
 
   if (!accountDoc.exists()) {
@@ -123,14 +164,14 @@ export const updateTransaction = async (
   transactionId: string,
   updates: Partial<TransactionInput>
 ): Promise<void> => {
-  const transactionRef = doc(db, "transactions", transactionId);
+  const transactionRef = firestoreDoc(db, "transactions", transactionId);
   await updateDoc(transactionRef, updates);
 };
 
 export const deleteTransaction = async (
   transactionId: string
 ): Promise<void> => {
-  const transactionRef = doc(db, "transactions", transactionId);
+  const transactionRef = firestoreDoc(db, "transactions", transactionId);
   await deleteDoc(transactionRef);
 };
 
@@ -147,7 +188,53 @@ export const getRecentTransactions = async (
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+  const transactions = await Promise.all(
+    querySnapshot.docs.map(async (doc) => {
+      const transactionData = doc.data() as Transaction;
+
+      const [accountDoc, categoryDoc] = await Promise.all([
+        getDoc(firestoreDoc(db, "accounts", transactionData.accountId)),
+        getDoc(firestoreDoc(db, "categories", transactionData.categoryId)),
+      ]);
+
+      if (accountDoc.exists() && categoryDoc.exists()) {
+        const accountData = accountDoc.data() as Account;
+        const categoryData = categoryDoc.data() as Category;
+
+        return {
+          id: doc.id,
+          account: {
+            id: accountDoc.id,
+            name: accountData.name,
+            accountType: accountData.accountType,
+            bankName: accountData.bankName,
+            balance: accountData.balance,
+            currency: accountData.currency,
+            lastSync: accountData.lastSync,
+            isActive: accountData.isActive,
+          },
+          category: {
+            id: categoryDoc.id,
+            name: categoryData.name,
+            type: categoryData.type,
+            icon: categoryData.icon,
+            color: categoryData.color,
+            isDefault: categoryData.isDefault,
+            isActive: categoryData.isActive,
+          },
+          amount: transactionData.amount,
+          type: transactionData.type,
+          description: transactionData.description,
+          transactionDate: transactionData.transactionDate,
+          isRecurring: transactionData.isRecurring || false,
+          recurringPattern: transactionData.recurringPattern,
+          attachments: transactionData.attachments || [],
+        };
+      } else {
+        throw new Error("Related account or category not found");
+      }
+    })
   );
+
+  return transactions;
 };

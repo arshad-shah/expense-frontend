@@ -26,9 +26,9 @@ const Budgets: React.FC = () => {
       setError(null);
 
       // Fetch budgets from Firebase
-      // const fetchedBudgets = await getBudgets(userId, filters);
+      const fetchedBudgets = await getBudgets(userId, filters);
       // Mock data for budgets
-      const fetchedBudgets: Budget[] = [
+      const fetchedBudgetsMocked: Budget[] = [
         {
           id: "1",
           name: "Groceries",

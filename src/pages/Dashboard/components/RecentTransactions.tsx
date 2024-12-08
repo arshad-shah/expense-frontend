@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  AlertTriangle,
+  Clock,
+  CreditCard,
+  MoreVertical
+} from 'lucide-react';
 import { getRecentTransactions } from '@/services/TransactionService';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Transaction } from '@/types';
+import type { Transaction, TransactionType } from '@/types';
 import EmptyState from '@/components/EmptyState';
+import { cn } from '@/lib/utils';
 
 const RecentTransactions: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Array<Transaction & { type: TransactionType }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { user } = useAuth();
@@ -17,7 +25,10 @@ const RecentTransactions: React.FC = () => {
 
       try {
         setLoading(true);
-        const recentTransactions = await getRecentTransactions(user.id, 5);
+        const recentTransactions = (await getRecentTransactions(user.id, 5)).map(transaction => ({
+          ...transaction,
+          type: transaction.type as TransactionType
+        }));
         setTransactions(recentTransactions);
       } catch (err) {
         console.error('Error fetching transactions:', err);
@@ -52,23 +63,40 @@ const RecentTransactions: React.FC = () => {
     });
   };
 
+  const formatCurrency = (amount: number, type: TransactionType) => {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+
+    return `${type === 'INCOME' ? '+' : '-'}${formatted}`;
+  };
+
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-        <div className="mt-4 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+            <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+          </div>
+          <Clock className="w-5 h-5 text-gray-400" />
+        </div>
+        <div className="space-y-4">
           {[1, 2, 3].map((index) => (
-            <div key={index} className="animate-pulse flex items-center justify-between p-4">
-              <div className="flex items-center space-x-4">
-                <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+            <div key={index} className="animate-pulse flex items-center justify-between p-4 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-gray-100 rounded-full"></div>
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  <div className="h-3 bg-gray-200 rounded w-24"></div>
+                  <div className="h-4 bg-gray-100 rounded w-32"></div>
+                  <div className="h-3 bg-gray-100 rounded w-24"></div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-                <div className="h-3 bg-gray-200 rounded w-16"></div>
+              <div className="text-right space-y-2">
+                <div className="h-4 bg-gray-100 rounded w-20 ml-auto"></div>
+                <div className="h-3 bg-gray-100 rounded w-16 ml-auto"></div>
               </div>
             </div>
           ))}
@@ -79,74 +107,117 @@ const RecentTransactions: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-        <div className="mt-4 flex items-center justify-center p-4 bg-red-50 text-red-600 rounded-lg">
-          <AlertCircle className="h-5 w-5 mr-2" />
-          {error}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+            <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+          </div>
+          <AlertTriangle className="w-5 h-5 text-red-500" />
+        </div>
+        <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm">{error}</span>
         </div>
       </div>
     );
   }
 
+  const TransactionIcon = ({ type }: { type: TransactionType }) => {
+    const baseClasses = "p-2.5 rounded-full flex items-center justify-center transition-colors duration-200";
+    const iconClasses = "w-5 h-5";
+    
+    if (type === 'INCOME') {
+      return (
+        <div className={cn(baseClasses, "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100")}>
+          <ArrowUpRight className={iconClasses} />
+        </div>
+      );
+    }
+    return (
+      <div className={cn(baseClasses, "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100")}>
+        <ArrowDownRight className={iconClasses} />
+      </div>
+    );
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+          <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+        </div>
+        <Clock className="w-5 h-5 text-gray-400" />
+      </div>
+
       {transactions.length === 0 ? (
-        <EmptyState heading='No recent transactions found' message='Start tracking your expenses to see them here' />
+        <EmptyState 
+          heading='No recent transactions' 
+          message='Start tracking your expenses to see them here' 
+        />
       ) : (
-        <div className="mt-4">
-          <div className="space-y-4">
-            {transactions.map((transaction) => (
-              <div 
-                key={transaction.id}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors duration-150"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    transaction.type === 'INCOME' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    {transaction.type === 'INCOME' ? (
-                      <ArrowUpRight className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <ArrowDownRight className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div>
+        <div className="space-y-4">
+          {transactions.map((transaction) => (
+            <div 
+              key={transaction.id}
+              className="group flex items-center justify-between p-4 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+            >
+              <div className="flex items-center gap-4">
+                <TransactionIcon type={transaction.type} />
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
                     <p className="font-medium text-gray-900">
                       {transaction.description}
                     </p>
-                    <div className="flex items-center space-x-2">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-medium",
+                      transaction.type === 'INCOME' 
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-indigo-50 text-indigo-700"
+                    )}>
+                      {transaction.type === 'INCOME' ? 'Income' : 'Expense'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="flex items-center gap-1.5">
                       <span 
-                        className="inline-block w-2 h-2 rounded-full"
+                        className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm"
                         style={{ backgroundColor: transaction.category.color }}
                       />
-                      <p className="text-sm text-gray-500">
+                      <span className="text-gray-600">
                         {transaction.category.name}
-                      </p>
-                      <span className="text-sm text-gray-400">
-                        {transaction.account.name}
                       </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>{transaction.account.name}</span>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className={`font-medium ${
-                    transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {transaction.type === 'INCOME' ? '+' : '-'}
-                    ${transaction.amount.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
+                  <p className={cn(
+                    "font-medium",
+                    transaction.type === 'INCOME' ? "text-emerald-600" : "text-indigo-600"
+                  )}>
+                    {formatCurrency(transaction.amount, transaction.type)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-0.5">
                     {formatDate(transaction.transactionDate)}
                   </p>
                 </div>
+                
+                <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded-lg">
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

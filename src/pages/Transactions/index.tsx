@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Filter, Download, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import TransactionList from './components/TransactionList';
 import AddTransactionModal from './components/AddTransactionModal';
 import TransactionFilters from './components/TransactionFilters';
 import { getTransactions } from '../../services/TransactionService';
 import type { Transaction, TransactionFilters as FilterType, Account, Category } from '../../types';
+import TransactionHeader from './components/TransactionHeader';
 
 const Transactions: React.FC = () => {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ const Transactions: React.FC = () => {
     try {
       setLoading(true);
       if (user) {
-        // const fetchedTransactions = await getTransactions(user.id, filters);
+        const fetchedTransactions = await getTransactions(filters);
         // src/mocks/transactions.ts
         const mockAccounts: Account[] = [
           {
@@ -135,7 +136,7 @@ const Transactions: React.FC = () => {
             isRecurring: false,
           },
         ];
-        setTransactions(mockTransactions);
+        setTransactions(fetchedTransactions);
       }
     } catch (err) {
       setError('Failed to load transactions');
@@ -195,36 +196,11 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-          <p className="text-gray-600">Manage your income and expenses</p>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => setIsFilterOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-          >
-            <Filter className="h-5 w-5 mr-2" />
-            Filters
-          </button>
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Export
-          </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Add Transaction
-          </button>
-        </div>
-      </div>
+      <TransactionHeader
+        onOpenFilter={() => setIsFilterOpen(true)}
+        onExport={handleExport}
+        onAddTransaction={() => setIsAddModalOpen(true)}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

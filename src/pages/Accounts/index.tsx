@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { Plus, CreditCard, PiggyBank, DollarSign, TrendingUp, AlertCircle, Briefcase } from "lucide-react";
+import { 
+  Plus, 
+  CreditCard, 
+  PiggyBank, 
+  DollarSign, 
+  TrendingUp, 
+  AlertCircle, 
+  Briefcase,
+  Download,
+  FileText
+} from "lucide-react";
 import AccountCard from "./components/AccountCard";
 import AddAccountModal from "./components/AddAccountModal";
 import type { Account } from "../../types";
 import { getAccounts } from "@/services/AccountService";
 import EmptyState from "@/components/EmptyState";
+import { Button } from "@/components/Button";
 
 const Accounts: React.FC = () => {
   const { user } = useAuth();
@@ -22,45 +33,8 @@ const Accounts: React.FC = () => {
     try {
       setLoading(true);
       if (user) {
-        // const fetchedAccounts = await getAccounts(user.id);
-        const mockedAccounts: Account[] = [
-          {
-            id: "1",
-            name: "Main Checking",
-            accountType: "CHECKING",
-            bankName: "Bank of America",
-            balance: 1500.0,
-            currency: "USD",
-            isActive: true,
-            lastSync: new Date().toISOString(),
-            transactions: [],
-          },
-          {
-            id: "2",
-            name: "Savings Account",
-            accountType: "SAVINGS",
-            bankName: "Chase",
-            balance: 3000.0,
-            currency: "USD",
-            isActive: true,
-            lastSync: new Date().toISOString(),
-            transactions: [],
-          },
-          {
-            id: "3",
-            name: "Credit Card",
-            accountType: "CREDIT_CARD",
-            bankName: "Citi",
-            balance: -500.0,
-            currency: "USD",
-            isActive: true,
-            lastSync: new Date().toISOString(),
-            transactions: [],
-          },
-        ];
-
-        setAccounts(mockedAccounts);
-        // setAccounts(fetchedAccounts);
+        const fetchedAccounts = await getAccounts(user.id);
+        setAccounts(fetchedAccounts);
       }
     } catch (err) {
       setError("Failed to load accounts");
@@ -83,7 +57,7 @@ const Accounts: React.FC = () => {
       case "INVESTMENT":
         return TrendingUp;
       default:
-        return AlertCircle; // Fallback icon for unknown types
+        return AlertCircle;
     }
   };
 
@@ -91,10 +65,11 @@ const Accounts: React.FC = () => {
     return accounts.reduce((sum, account) => sum + account.balance, 0);
   };
 
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
@@ -111,23 +86,47 @@ const Accounts: React.FC = () => {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-gray-600">Manage your financial accounts</p>
+      <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+            Accounts
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 hidden sm:block">
+            Manage your financial accounts
+          </p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Account
-        </button>
+        
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          {/* Mobile view: Action buttons in a grid */}
+          <div className="grid grid-cols-2 gap-3 sm:hidden">
+            <Button
+              variant="info"
+              size="sm"
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full col-span-2"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Account
+            </Button>
+          </div>
+
+          {/* Desktop view: Action buttons in a row */}
+          <div className="hidden sm:flex sm:items-center sm:space-x-3">
+            <Button
+              variant="info"
+              size="md"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Account
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Total Balance Card */}
       {accounts.length > 0 && (
-        <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-xl shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
           <h2 className="text-lg font-medium opacity-90">Total Balance</h2>
           <p className="text-3xl font-bold mt-2">
             ${getTotalBalance().toLocaleString("en-US", {

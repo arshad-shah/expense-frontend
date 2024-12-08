@@ -57,7 +57,7 @@ export const getAccountsWithBalance = async (
   // Calculate balance for each account
   const accountsWithBalance = accounts.map((account) => {
     const accountTransactions = transactions.filter(
-      (transaction) => transaction.account.id === account.id
+      (transaction) => transaction.accountId === account.id
     );
 
     const updatedBalance = accountTransactions.reduce((sum, transaction) => {
