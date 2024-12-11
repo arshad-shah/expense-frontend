@@ -13,7 +13,6 @@ export interface User {
 
 export interface UserInput {
   email: string;
-  hashedPassword: string;
   firstName: string;
   lastName: string;
   currency: string;
@@ -22,7 +21,6 @@ export interface UserInput {
 // src/types/account.ts
 export interface Account {
   id: string;
-  user: User;
   name: string;
   accountType: string;
   bankName: string;
@@ -33,6 +31,11 @@ export interface Account {
   transactions?: Transaction[];
 }
 
+export interface AccountWithBalance extends Account {
+  balance: number;
+  transactionCount: number;
+}
+
 export interface AccountInput {
   userId: string;
   name: string;
@@ -41,11 +44,9 @@ export interface AccountInput {
   balance: number;
   currency: string;
 }
-
 // src/types/transaction.ts
 export interface Transaction {
   id: string;
-  user: User;
   account: Account;
   category: Category;
   amount: number;
@@ -72,7 +73,6 @@ export interface TransactionInput {
 // src/types/category.ts
 export interface Category {
   id: string;
-  user: User;
   name: string;
   type: string;
   icon: string;
@@ -94,7 +94,6 @@ export interface CategoryInput {
 // src/types/budget.ts
 export interface Budget {
   id: string;
-  user: User;
   name: string;
   amount: number;
   period: string;
@@ -104,6 +103,13 @@ export interface Budget {
   categories?: BudgetCategory[];
 }
 
+export interface BudgetCategory {
+  budget: Budget;
+  category: Category;
+  allocatedAmount: number;
+  spentAmount: number;
+}
+
 export interface BudgetInput {
   userId: string;
   name: string;
@@ -111,13 +117,6 @@ export interface BudgetInput {
   period: string;
   startDate: string;
   endDate: string;
-}
-
-export interface BudgetCategory {
-  budget: Budget;
-  category: Category;
-  allocatedAmount: number;
-  spentAmount: number;
 }
 
 // src/types/attachment.ts
@@ -209,12 +208,14 @@ export interface BudgetPerformance {
   status: 'ON_TRACK' | 'WARNING' | 'EXCEEDED';
 }
 
-export interface ApolloConfig {
-  uri: string;
-  enableRetry?: boolean;
-  retryAttempts?: number;
-  tokenRefreshEndpoint?: string;
-  getToken?: () => string | null;
-  onTokenRefresh?: (newToken: string) => void;
-  onError?: (error: Error) => void;
+
+export interface TransactionResponse {
+  accountId: string;
+  amount: number;
+  categoryId: string;
+  createdAt: string;
+  description: string;
+  transactionDate: string;
+  type: string;
+  userId: string;
 }

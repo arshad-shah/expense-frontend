@@ -1,66 +1,113 @@
-import React from 'react';
-import { ApolloProvider } from '@apollo/client';
-import { createApolloClient } from '@/api/apolloclient/client';
-import { Provider } from 'react-redux';
-import { store } from './store/store';
-import RegisterForm from '@/components/auth/RegisterForm';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LoginForm from '@/components/auth/LoginForm';
-import Dashboard from '@/components/dashboard/dashboard';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import NotFound from '@/components/NotFound';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Navigation from './components/Navigation';
+import Dashboard from './pages/Dashboard';
+import Accounts from './pages/Accounts';
+import Transactions from './pages/Transactions';
+import Budgets from './pages/Budgets';
+import Profile from './pages/Profile';
+import Login from './pages/login';
+import Register from './pages/register';
+import { ReactNode } from 'react';
 
-const App: React.FC = () => {
-    const client = createApolloClient({
-        uri: '/graphql',
-        getToken: () => sessionStorage.getItem('token'),
-        onTokenRefresh: (token) => sessionStorage.setItem('token', token),
-        onError: (error) => {
-            console.error('Apollo Client Error:', error);
-        },
-    });
-    
-    return (
-        <ApolloProvider client={client}>
-            <Provider store={store}>
-                <BrowserRouter>
-                    <Routes>
-                        {/* Public Routes */}
-                        <Route 
-                            path="/" 
-                            element={<Navigate to="/dashboard" replace />} 
-                        />
-                        <Route 
-                            path="/register" 
-                            element={<RegisterForm />} 
-                        />
-                        <Route 
-                            path="/login" 
-                            element={<LoginForm />} 
-                        />
+// Wrapper for authenticated pages with navigation and default layout
+const AuthenticatedLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
+  <>
+    <Navigation />
+    <main className="container w-full mx-auto px-4">
+      {children}
+    </main>
+  </>
+);
 
-                        {/* Protected Routes */}
-                        <Route
-                            path="/dashboard"
-                            element={
-                                <ProtectedRoute>
-                                    <Dashboard />
-                                </ProtectedRoute>
-                            }
-                        />
-                        
-                        {/* Catch all route - 404 */}
-                        <Route 
-                            path="*" 
-                            element={
-                                <NotFound />
-                            } 
-                        />
-                    </Routes>
-                </BrowserRouter>
-            </Provider>
-        </ApolloProvider>
-    );
-};
+// Wrapper for public pages with full height and no navigation
+const PublicLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
+  <main className="min-h-screen">
+    {children}
+  </main>
+);
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            {/* Public routes */}
+            <Route 
+              path="/login" 
+              element={
+                <PublicLayout>
+                  <Login />
+                </PublicLayout>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <PublicLayout>
+                  <Register />
+                </PublicLayout>
+              } 
+            />
+
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Dashboard />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/accounts"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Accounts />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Transactions />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/budgets"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Budgets />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Profile />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
 
 export default App;
