@@ -14,8 +14,8 @@ import type {
   Account,
   AccountInput,
   AccountType,
-  Transaction,
   AccountWithBalance,
+  TransactionResponse,
 } from "../types";
 
 export const getAccounts = async (userId: string): Promise<Account[]> => {
@@ -51,7 +51,7 @@ export const getAccountsWithBalance = async (
   const q = query(transactionsRef, where("userId", "==", userId));
   const transactionSnapshot = await getDocs(q);
   const transactions = transactionSnapshot.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+    (doc) => ({...doc.data() } as TransactionResponse)
   );
 
   // Calculate balance for each account

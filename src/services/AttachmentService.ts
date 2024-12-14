@@ -4,7 +4,6 @@ import {
   uploadBytes,
   getDownloadURL,
   deleteObject,
-  listAll,
 } from "firebase/storage";
 import {
   collection,

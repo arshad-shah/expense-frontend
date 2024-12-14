@@ -9,9 +9,10 @@ import Budgets from './pages/Budgets';
 import Profile from './pages/Profile';
 import Login from './pages/login';
 import Register from './pages/register';
+import { ReactNode } from 'react';
 
 // Wrapper for authenticated pages with navigation and default layout
-const AuthenticatedLayout = ({ children }) => (
+const AuthenticatedLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
   <>
     <Navigation />
     <main className="container w-full mx-auto px-4">
@@ -21,7 +22,7 @@ const AuthenticatedLayout = ({ children }) => (
 );
 
 // Wrapper for public pages with full height and no navigation
-const PublicLayout = ({ children }) => (
+const PublicLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
   <main className="min-h-screen">
     {children}
   </main>

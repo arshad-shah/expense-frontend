@@ -10,7 +10,7 @@ interface SelectProps extends React.ComponentPropsWithoutRef<typeof SelectPrimit
 export const Select = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Root>,
   SelectProps
->(({ children, ...props }, ref) => (
+>(({ children, ...props }) => (
   <SelectPrimitive.Root {...props}>{children}</SelectPrimitive.Root>
 ));
 
