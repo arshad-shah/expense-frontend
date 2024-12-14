@@ -44,6 +44,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
       if (user) {
         try {
           const fetchedCategories = await getCategories(user.id);
+
           setCategories(fetchedCategories);
         } catch (error) {
           console.error("Error fetching categories:", error);

@@ -1,24 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import TransactionList from './components/TransactionList';
 import AddTransactionModal from './components/AddTransactionModal';
 import TransactionFilters from './components/TransactionFilters';
-import { getTransactions } from '../../services/TransactionService';
-import { getAccounts } from '../../services/AccountService';
-import type { Transaction, TransactionFilters as FilterType, Account } from '../../types';
+import { getTransactions } from '@/services/TransactionService';
+import { getAccounts } from '@/services/AccountService';
+import type { 
+  Transaction, 
+  TransactionFilters as FilterType, 
+  Account, 
+  PaginatedResponse,
+  ApiResponse 
+} from '@/types';
 import TransactionHeader from './components/TransactionHeader';
 import ErrorState from '@/components/ErrorState';
 import PageLoader from '@/components/PageLoader';
 import Alert from '@/components/Alert';
+import SummaryCards from '@/pages/Transactions/components/SummaryCards';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 const Transactions: React.FC = () => {
+  // Auth
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  // State Management
+  const [transactions, setTransactions] = useState<PaginatedResponse<Transaction>>({
+    items: [],
+    total: 0,
+    page: 1,
+    limit: DEFAULT_PAGE_SIZE,
+    hasMore: false
+  });
+  const [accounts, setAccounts] = useState<PaginatedResponse<Account>>({
+    items: [],
+    total: 0,
+    page: 1,
+    limit: DEFAULT_PAGE_SIZE,
+    hasMore: false
+  });
+  const [modals, setModals] = useState({
+    add: false,
+    filter: false
+  });
+  const [loading, setLoading] = useState({
+    transactions: true,
+    accounts: true
+  });
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterType>({
     dateRange: {
       startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
@@ -26,40 +55,59 @@ const Transactions: React.FC = () => {
     }
   });
 
+  // Data Fetching
+  const fetchAccounts = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(prev => ({ ...prev, accounts: true }));
+      const fetchedAccounts = await getAccounts(user.id);
+      setAccounts(fetchedAccounts);
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+      setError('Failed to load accounts');
+    } finally {
+      setLoading(prev => ({ ...prev, accounts: false }));
+    }
+  }, [user?.id]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(prev => ({ ...prev, transactions: true }));
+      setError(null);
+
+      const response: ApiResponse<PaginatedResponse<Transaction>> = 
+        await getTransactions(filters);;
+        
+      if (!response.data) {
+        throw new Error('Failed to fetch transactions');
+      }
+
+      setTransactions(response.data);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to load transactions'
+      );
+    } finally {
+      setLoading(prev => ({ ...prev, transactions: false }));
+    }
+  }, [user?.id, filters]);
+
+  // Effects
   useEffect(() => {
     fetchTransactions();
     fetchAccounts();
-  }, [user, filters]);
+  }, [fetchTransactions, fetchAccounts]);
 
-  const fetchAccounts = async () => {
-    try {
-      if (user) {
-        const fetchedAccounts = await getAccounts(user.id);
-        setAccounts(fetchedAccounts);
-      }
-    } catch (err) {
-      console.error('Error fetching accounts:', err);
-    }
-  };
-
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      if (user) {
-        const fetchedTransactions = await getTransactions(filters);
-        setTransactions(fetchedTransactions);
-      }
-    } catch (err) {
-      setError('Failed to load transactions');
-      console.error('Error fetching transactions:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handlers
   const handleExport = () => {
-    const csv = transactions.map(t => ({
-      date: t.transactionDate,
+    const csv = transactions.items.map(t => ({
+      date: new Date(t.transactionDate).toLocaleDateString(),
       description: t.description,
       amount: t.amount,
       type: t.type,
@@ -69,115 +117,124 @@ const Transactions: React.FC = () => {
     
     const csvString = [
       ['Date', 'Description', 'Amount', 'Type', 'Category', 'Account'],
-      ...csv.map(row => Object.values(row))
+      ...csv.map(row => Object.values(row).map(value => 
+        typeof value === 'string' && value.includes(',') 
+          ? `"${value}"` 
+          : value
+      ))
     ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
-  const formatCurrency = (amount: number) => {
+
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: user?.currency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  };
+  }, [user?.currency]);
 
-  const getTotalIncome = () => {
-    return transactions
+  const getTotalIncome = useCallback(() => {
+    return transactions.items
       .filter(t => t.type === 'INCOME')
       .reduce((sum, t) => sum + t.amount, 0);
-  };
+  }, [transactions.items]);
 
-  const getTotalExpenses = () => {
-    return transactions
+  const getTotalExpenses = useCallback(() => {
+    return transactions.items
       .filter(t => t.type === 'EXPENSE')
       .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions.items]);
+
+  // Modal Handlers
+  const handleOpenModal = (modal: keyof typeof modals) => {
+    setModals(prev => ({ ...prev, [modal]: true }));
   };
+
+  const handleCloseModal = (modal: keyof typeof modals) => {
+    setModals(prev => ({ ...prev, [modal]: false }));
+  };
+
+  if (loading.transactions && loading.accounts) {
+    return <PageLoader text="Loading your transactions..." />;
+  }
 
   if (error) {
     return (
       <ErrorState
-        message="Failed to load transactions"
+        message={error}
         onRetry={fetchTransactions}
+        title="Failed to load transactions"
       />
     );
   }
 
-  if (loading) {
-    return <PageLoader text="Loading your transactions..." />;
-  }
-
-  const hasAccounts = accounts.length > 0;
+  const hasAccounts = accounts.total > 0;
 
   return (
     <div className="space-y-6 p-6">
+      {/* Account Warning */}
       {!hasAccounts && (
-        <Alert variant="warning" className="mb-4" link={{ href: '/accounts', label: 'Create an account' }}>
-          You need to create at least one account before adding transactions. Please go to the Accounts section to create an account.
+        <Alert 
+          variant="warning" 
+          title="Account Required"
+          className="mb-4" 
+          link={{ 
+            href: '/accounts', 
+            label: 'Create an account' 
+          }}
+        >
+          You need to create at least one account before adding transactions. 
+          Please go to the Accounts section to create an account.
         </Alert>
-
       )}
 
+      {/* Header */}
       <TransactionHeader
-        onOpenFilter={() => setIsFilterOpen(true)}
+        onOpenFilter={() => handleOpenModal('filter')}
         onExport={handleExport}
-        onAddTransaction={() => setIsAddModalOpen(true)}
+        onAddTransaction={() => handleOpenModal('add')}
         disableAdd={!hasAccounts}
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Income</h3>
-          <p className="mt-2 text-2xl font-semibold text-green-600">
-            {formatCurrency(getTotalIncome())}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
-          <p className="mt-2 text-2xl font-semibold text-red-600">
-            {formatCurrency(getTotalExpenses())}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-sm font-medium text-gray-500">Net Income</h3>
-          <p className={`mt-2 text-2xl font-semibold ${
-            getTotalIncome() - getTotalExpenses() >= 0 ? 'text-teal-600' : 'text-red-600'
-          }`}>
-            {formatCurrency(getTotalIncome() - getTotalExpenses())}
-          </p>
-        </div>
-      </div>
+      <SummaryCards
+        currentTransactions={transactions.items}
+        formatCurrency={formatCurrency}
+      />
 
       {/* Transaction List */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <TransactionList
-          transactions={transactions}
-          onUpdate={fetchTransactions}
-        />
-      </div>
+      <TransactionList
+        transactions={transactions.items}
+        onUpdate={fetchTransactions}
+      />
 
       {/* Modals */}
       <AddTransactionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={modals.add}
+        onClose={() => handleCloseModal('add')}
         onTransactionAdded={fetchTransactions}
+        accounts={accounts.items}
       />
 
       <TransactionFilters
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
+        isOpen={modals.filter}
+        onClose={() => handleCloseModal('filter')}
         filters={filters}
         onApplyFilters={setFilters}
+        accounts={accounts.items}
       />
     </div>
   );

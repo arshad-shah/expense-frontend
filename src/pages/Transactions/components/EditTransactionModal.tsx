@@ -50,7 +50,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             getAccounts(user.id),
             getCategories(user.id),
           ]);
-          setAccounts(fetchedAccounts);
+          setAccounts(fetchedAccounts.items);
           setCategories(fetchedCategories);
         } catch (error) {
           console.error("Error fetching data:", error);

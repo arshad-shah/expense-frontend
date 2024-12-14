@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
 
   const getColumnClasses = (widget: WidgetType) => {
     // Base classes for all widgets
-    let classes = ['col-span-1'];
+    const classes = ['col-span-1'];
 
     // Medium screens (md: 768px and up)
     if (widget.span >= 2 || widget.minSpan === 2) {

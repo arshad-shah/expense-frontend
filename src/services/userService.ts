@@ -16,8 +16,22 @@ import type {
   Transaction,
   Category,
   Budget,
+  UserStats,
 } from "../types";
 
+// Default user preferences for new users
+const DEFAULT_USER_PREFERENCES: Pick<User, 'dateFormat' | 'budgetStartDay' | 'weekStartDay'> = {
+  dateFormat: 'MM/DD/YYYY',
+  budgetStartDay: 1,
+  weekStartDay: 'monday',
+};
+
+/**
+ * Retrieves a user by their ID with optional related data
+ * @param userId - The unique identifier of the user
+ * @param includeRelations - Whether to include related data (accounts, transactions, etc.)
+ * @returns The user object or null if not found
+ */
 export const getUser = async (
   userId: string,
   includeRelations: boolean = false
@@ -33,15 +47,12 @@ export const getUser = async (
 
   if (!includeRelations) {
     return {
+      ...userData,
       id: userSnap.id,
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      currency: userData.currency,
     };
   }
 
-  // Fetch related data
+  // Fetch related data if requested
   const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
     await Promise.all([
       getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
@@ -54,165 +65,80 @@ export const getUser = async (
       getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
     ]);
 
+  // Update usage statistics
+  await updateDoc(userRef, {
+    lastActive: new Date().toISOString(),
+    totalAccounts: accountsSnap.size,
+    totalTransactions: transactionsSnap.size,
+  });
+
+  // Return user with all related data
   return {
+    ...userData,
     id: userSnap.id,
-    email: userData.email,
-    firstName: userData.firstName,
-    lastName: userData.lastName,
-    currency: userData.currency,
     accounts: accountsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Account)
+      (doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Account)
     ),
     transactions: transactionsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Transaction)
+      (doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Transaction)
     ),
     categories: categoriesSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Category)
+      (doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Category)
     ),
     budgets: budgetsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Budget)
+      (doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Budget)
     ),
   };
 };
 
-export const getUserByEmail = async (
-  email: string,
-  includeRelations: boolean = false
-): Promise<User | null> => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email));
-  const querySnapshot = await getDocs(q);
-
-  if (querySnapshot.empty) {
-    return null;
-  }
-
-  const userDoc = querySnapshot.docs[0];
-  return getUser(userDoc.id, includeRelations);
-};
-
+/**
+ * Creates a new user with default categories
+ * @param userInput - The user input data including ID
+ * @returns The created user object
+ */
 export const createUser = async (
   userInput: UserInput & { id: string }
 ): Promise<User> => {
+  // Create base user object
   const user: User = {
     id: userInput.id,
     email: userInput.email,
     firstName: userInput.firstName,
     lastName: userInput.lastName,
     currency: userInput.currency,
+    signupDate: new Date().toISOString(),
+    totalTransactions: 0,
+    totalAccounts: 0,
+    ...DEFAULT_USER_PREFERENCES,
   };
 
+  // check if we have categories in the database
+  const categoriesSnap = await getDocs(query(collection(db, "categories"), where("userId", "==", userInput.id)));
+  
+  // Default categories for new users
   const defaultCategories = [
     // Income Categories
     { name: "Salary", type: "INCOME", icon: "dollar", color: "#4CAF50" },
-    {
-      name: "Other Income",
-      type: "INCOME",
-      icon: "plus-circle",
-      color: "#8BC34A",
-    },
-    {
-      name: "Investments",
-      type: "INCOME",
-      icon: "trending-up",
-      color: "#66BB6A",
-    },
-    { name: "Freelance", type: "INCOME", icon: "briefcase", color: "#81C784" },
-    { name: "Rental Income", type: "INCOME", icon: "home", color: "#A5D6A7" },
+    { name: "Investments", type: "INCOME", icon: "trending-up", color: "#66BB6A" },
+    { name: "Other Income", type: "INCOME", icon: "plus-circle", color: "#8BC34A" },
 
     // Essential Expenses
-    {
-      name: "Food & Dining",
-      type: "EXPENSE",
-      icon: "coffee",
-      color: "#FF5722",
-    },
-    {
-      name: "Groceries",
-      type: "EXPENSE",
-      icon: "shopping-cart",
-      color: "#FF7043",
-    },
-    { name: "Transportation", type: "EXPENSE", icon: "car", color: "#2196F3" },
-    {
-      name: "Bills & Utilities",
-      type: "EXPENSE",
-      icon: "file-text",
-      color: "#607D8B",
-    },
-    { name: "Rent/Mortgage", type: "EXPENSE", icon: "home", color: "#455A64" },
-
-    // Lifestyle & Shopping
-    {
-      name: "Shopping",
-      type: "EXPENSE",
-      icon: "shopping-bag",
-      color: "#9C27B0",
-    },
-    { name: "Entertainment", type: "EXPENSE", icon: "film", color: "#E91E63" },
-    {
-      name: "Health & Fitness",
-      type: "EXPENSE",
-      icon: "heart",
-      color: "#F44336",
-    },
-    { name: "Personal Care", type: "EXPENSE", icon: "user", color: "#EC407A" },
-
-    // Services & Education
-    { name: "Education", type: "EXPENSE", icon: "book", color: "#3F51B5" },
-    {
-      name: "Subscriptions",
-      type: "EXPENSE",
-      icon: "repeat",
-      color: "#5C6BC0",
-    },
-    { name: "Insurance", type: "EXPENSE", icon: "shield", color: "#7986CB" },
-
-    // Savings & Investments
-    { name: "Savings", type: "EXPENSE", icon: "piggy-bank", color: "#009688" },
-    {
-      name: "Investments",
-      type: "EXPENSE",
-      icon: "bar-chart",
-      color: "#26A69A",
-    },
-    {
-      name: "Debt Payment",
-      type: "EXPENSE",
-      icon: "credit-card",
-      color: "#4DB6AC",
-    },
-
-    // Miscellaneous
-    {
-      name: "Gifts & Donations",
-      type: "EXPENSE",
-      icon: "gift",
-      color: "#FFC107",
-    },
-    { name: "Travel", type: "EXPENSE", icon: "plane", color: "#00BCD4" },
-    {
-      name: "Others",
-      type: "EXPENSE",
-      icon: "more-horizontal",
-      color: "#9E9E9E",
-    },
+    { name: "Housing", type: "EXPENSE", icon: "home", color: "#455A64" },
+    { name: "Utilities", type: "EXPENSE", icon: "zap", color: "#607D8B" },
+    { name: "Groceries", type: "EXPENSE", icon: "shopping-cart", color: "#FF7043" },
+    { name: "Transport", type: "EXPENSE", icon: "car", color: "#2196F3" },
   ];
 
   const batch = writeBatch(db);
@@ -224,23 +150,27 @@ export const createUser = async (
     createdAt: new Date().toISOString(),
   });
 
-  // Write default categories with userId
-  defaultCategories.forEach((category) => {
-    const categoryDocRef = doc(collection(db, "categories"));
-    batch.set(categoryDocRef, {
-      ...category,
-      userId: user.id, // Ensure userId is set
-      isDefault: true,
-      isActive: true,
-      createdAt: new Date().toISOString(),
+  if (categoriesSnap.empty) {
+    console.log('Creating default categories');
+    
+    // Write default categories
+    defaultCategories.forEach((category) => {
+      const categoryDocRef = doc(db, "categories");
+      batch.set(categoryDocRef, {
+        ...category,
+      });
     });
-  });
+  }
 
   await batch.commit();
   return user;
 };
 
-
+/**
+ * Updates user information
+ * @param userId - The ID of the user to update
+ * @param updates - Partial user data to update
+ */
 export const updateUser = async (
   userId: string,
   updates: Partial<UserInput>
@@ -258,53 +188,15 @@ export const updateUser = async (
   });
 };
 
-export const deleteUser = async (userId: string): Promise<void> => {
-  // Get all user's data
-  const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
-    await Promise.all([
-      getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
-      getDocs(
-        query(collection(db, "transactions"), where("userId", "==", userId))
-      ),
-      getDocs(
-        query(collection(db, "categories"), where("userId", "==", userId))
-      ),
-      getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
-    ]);
-
-  // Delete all related data
-  const batch = writeBatch(db);
-
-  accountsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-
-  transactionsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-
-  categoriesSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-
-  budgetsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-
-  // Delete user document
-  batch.delete(doc(db, "users", userId));
-
-  await batch.commit();
-};
-
+/**
+ * Gets comprehensive statistics for a user
+ * @param userId - The ID of the user
+ * @returns User statistics including financial metrics and trends
+ */
 export const getUserStats = async (
   userId: string
-): Promise<{
-  totalAccounts: number;
-  totalTransactions: number;
-  totalCategories: number;
-  totalBudgets: number;
-}> => {
+): Promise<UserStats> => {
+  // Fetch all relevant data
   const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
     await Promise.all([
       getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
@@ -317,10 +209,110 @@ export const getUserStats = async (
       getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
     ]);
 
+  // Calculate current month metrics
+  const currentDate = new Date();
+  const firstDayOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const firstDayOfLastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+  
+  // Process transactions
+  const transactions = transactionsSnap.docs.map(doc => {
+    const data = doc.data();
+
+    // get account and category objects using the data.accountId and data.categoryId
+    const account = accountsSnap.docs.find(acc => acc.id === data.accountId)?.data();
+    const category = categoriesSnap.docs.find(cat => cat.id === data.categoryId)?.data();
+    
+    return {
+      id: doc.id,
+      account: account,
+      category: category,
+      amount: data.amount,
+      type: data.type,
+      transactionDate: new Date(data.transactionDate).toISOString(),
+      description: data.description || '',
+      isRecurring: data.isRecurring || false,
+    } as Transaction;
+  });
+
+  // Filter transactions by month
+  const currentMonthTransactions = transactions
+    .filter(transaction => new Date(transaction.transactionDate) >= firstDayOfCurrentMonth);
+
+    
+  const lastMonthTransactions = transactions
+    .filter(transaction => 
+      new Date(transaction.transactionDate) >= firstDayOfLastMonth && 
+      new Date(transaction.transactionDate) < firstDayOfCurrentMonth
+    );
+
+  // Calculate current month metrics
+  const currentMonthlySpending = currentMonthTransactions
+    .filter(t => t.type === 'EXPENSE')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentMonthlyIncome = currentMonthTransactions
+    .filter(t => t.type === 'INCOME')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Calculate last month metrics
+  const lastMonthlySpending = lastMonthTransactions
+    .filter(t => t.type === 'EXPENSE')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const lastMonthlyIncome = lastMonthTransactions
+    .filter(t => t.type === 'INCOME')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Calculate savings rates
+  const currentSavingsRate = currentMonthlyIncome > 0 
+    ? ((currentMonthlyIncome - currentMonthlySpending) / currentMonthlyIncome) * 100 
+    : 0;
+
+  const lastSavingsRate = lastMonthlyIncome > 0
+    ? ((lastMonthlyIncome - lastMonthlySpending) / lastMonthlyIncome) * 100
+    : 0;
+
+  // Calculate trends
+  const calculateTrend = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, direction: 'up' as const };
+    const percentageChange = ((current - previous) / previous) * 100;
+    return {
+      value: Math.abs(Number(percentageChange.toFixed(1))),
+      direction: percentageChange >= 0 ? 'up' as const : 'down' as const
+    };
+  };
+
+  const trends = {
+    income: calculateTrend(currentMonthlyIncome, lastMonthlyIncome),
+    spending: calculateTrend(currentMonthlySpending, lastMonthlySpending),
+    savings: calculateTrend(currentSavingsRate, lastSavingsRate)
+  };
+
+  // Calculate top spending categories
+  const categorySpending = currentMonthTransactions
+    .filter(t => t.type === 'EXPENSE')
+    .reduce((acc, t) => {
+
+      
+      acc[t.category.name] = (acc[t.category.name] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+  const topCategories = Object.entries(categorySpending)
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  // Return comprehensive statistics
   return {
     totalAccounts: accountsSnap.size,
     totalTransactions: transactionsSnap.size,
     totalCategories: categoriesSnap.size,
     totalBudgets: budgetsSnap.size,
+    monthlySpending: currentMonthlySpending,
+    monthlyIncome: currentMonthlyIncome,
+    savingsRate: currentSavingsRate,
+    topCategories,
+    trends
   };
 };

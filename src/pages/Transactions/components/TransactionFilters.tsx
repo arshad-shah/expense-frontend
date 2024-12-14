@@ -13,7 +13,6 @@ import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { DateRangePicker } from "@/components/DateRangePicker"; // Import the reusable DateRangePicker
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts } from "@/services/AccountService";
 import { getCategories } from "@/services/CategoryService";
 import type { Account, Category, TransactionFilters as FilterType, TransactionType } from "@/types";
 
@@ -22,6 +21,7 @@ interface TransactionFiltersProps {
   onClose: () => void;
   filters: FilterType;
   onApplyFilters: (filters: FilterType) => void;
+  accounts: Account[];
 }
 
 const TransactionFilters: React.FC<TransactionFiltersProps> = ({
@@ -29,9 +29,9 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   onClose,
   filters,
   onApplyFilters,
+  accounts,
 }) => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [localFilters, setLocalFilters] = useState<FilterType>(filters);
 
@@ -39,11 +39,9 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     const fetchData = async () => {
       if (user) {
         try {
-          const [fetchedAccounts, fetchedCategories] = await Promise.all([
-            getAccounts(user.id),
+          const [fetchedCategories] = await Promise.all([
             getCategories(user.id),
           ]);
-          setAccounts(fetchedAccounts);
           setCategories(fetchedCategories);
         } catch (error) {
           console.error("Error fetching data:", error);

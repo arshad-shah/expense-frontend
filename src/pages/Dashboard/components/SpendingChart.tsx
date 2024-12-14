@@ -10,8 +10,9 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTransactions } from '@/services/TransactionService';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import type { Transaction } from '@/types';
+import { getUserStats } from '@/services/userService';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown } from 'lucide-react';
+import type { Transaction, UserStats } from '@/types';
 
 interface MonthlySpending {
   month: string;
@@ -21,11 +22,12 @@ interface MonthlySpending {
 
 const SpendingChart: React.FC = () => {
   const [data, setData] = useState<MonthlySpending[]>([]);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { user } = useAuth();
 
-    const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: user?.currency || 'USD',
@@ -33,7 +35,7 @@ const SpendingChart: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(amount);
   };
-  
+
   // Calculate total spending and income
   const totals = data.reduce((acc, curr) => ({
     spending: acc.spending + curr.spending,
@@ -41,38 +43,49 @@ const SpendingChart: React.FC = () => {
   }), { spending: 0, income: 0 });
 
   useEffect(() => {
-    const fetchTransactions = async () => {
+    const fetchData = async () => {
       if (!user?.id) return;
 
       try {
         setLoading(true);
+        setError('');
         const now = new Date();
         const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
         
-        const transactions = await getTransactions({
-          dateRange: {
-            startDate: sixMonthsAgo.toISOString(),
-            endDate: now.toISOString()
-          }
-        });
+        // Fetch both transactions and user stats in parallel
+        const [transactionsResponse, stats] = await Promise.all([
+          getTransactions({
+            dateRange: {
+              startDate: sixMonthsAgo.toISOString(),
+              endDate: now.toISOString()
+            }
+          }, 1, 1000), // Request a large page size to get all transactions at once
+          getUserStats(user.id)
+        ]);
 
-        const monthlyData = processTransactions(transactions);
+        if (transactionsResponse.status !== 200 || !transactionsResponse.data) {
+          throw new Error(transactionsResponse.error || 'Failed to fetch transactions');
+        }
+
+        const monthlyData = processTransactions(transactionsResponse.data.items);
         setData(monthlyData);
+        setUserStats(stats);
       } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('Failed to load spending data');
+        console.error('Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load spending data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTransactions();
+    fetchData();
   }, [user]);
 
   const processTransactions = (transactions: Transaction[]): MonthlySpending[] => {
     const monthlyTotals = new Map<string, { spending: number; income: number }>();
     const months = [];
     
+    // Initialize last 6 months
     for (let i = 0; i < 6; i++) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
@@ -81,6 +94,7 @@ const SpendingChart: React.FC = () => {
       monthlyTotals.set(monthKey, { spending: 0, income: 0 });
     }
 
+    // Process transactions
     transactions.forEach(transaction => {
       const date = new Date(transaction.transactionDate);
       const monthKey = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
@@ -95,6 +109,7 @@ const SpendingChart: React.FC = () => {
       }
     });
 
+    // Convert to array format
     return months.map(month => ({
       month,
       ...monthlyTotals.get(month)!
@@ -106,7 +121,8 @@ const SpendingChart: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex flex-col space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Spending Trends</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
             <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
             <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
           </div>
@@ -142,7 +158,7 @@ const SpendingChart: React.FC = () => {
             <div className="flex items-center space-x-2">
               <ArrowUpRight className="h-4 w-4 text-emerald-600" />
               <p className="text-emerald-600">
-                Income:  {formatCurrency(payload[1].value)}
+                Income: {formatCurrency(payload[1].value)}
               </p>
             </div>
           </div>
@@ -153,25 +169,86 @@ const SpendingChart: React.FC = () => {
   };
 
   const CustomLegend = () => {
+    const trends = userStats?.trends;
+    
     return (
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-indigo-50 rounded-lg p-4">
           <div className="flex items-center space-x-2 mb-1">
             <div className="h-3 w-3 rounded-full bg-indigo-600"></div>
             <span className="text-sm font-medium text-gray-600">Total Spending</span>
           </div>
-          <p className="text-lg font-semibold text-gray-900">
-            {formatCurrency(totals.spending)}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-semibold text-gray-900">
+              {formatCurrency(totals.spending)}
+            </p>
+            {trends?.spending && (
+              <div className="flex items-center space-x-1">
+                {trends.spending.direction === 'up' ? (
+                  <TrendingUp className="h-4 w-4 text-red-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-green-500" />
+                )}
+                <span className={`text-sm font-medium ${
+                  trends.spending.direction === 'up' ? 'text-red-500' : 'text-green-500'
+                }`}>
+                  {trends.spending.value}%
+                </span>
+              </div>
+            )}
+          </div>
         </div>
+        
         <div className="bg-emerald-50 rounded-lg p-4">
           <div className="flex items-center space-x-2 mb-1">
             <div className="h-3 w-3 rounded-full bg-emerald-600"></div>
             <span className="text-sm font-medium text-gray-600">Total Income</span>
           </div>
-          <p className="text-lg font-semibold text-gray-900">
-            {formatCurrency(totals.income)}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-semibold text-gray-900">
+              {formatCurrency(totals.income)}
+            </p>
+            {trends?.income && (
+              <div className="flex items-center space-x-1">
+                {trends.income.direction === 'up' ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+                <span className={`text-sm font-medium ${
+                  trends.income.direction === 'up' ? 'text-green-500' : 'text-red-500'
+                }`}>
+                  {trends.income.value}%
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-lg p-4">
+          <div className="flex items-center space-x-2 mb-1">
+            <div className="h-3 w-3 rounded-full bg-blue-600"></div>
+            <span className="text-sm font-medium text-gray-600">Savings Rate</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-semibold text-gray-900">
+              {userStats?.savingsRate.toFixed(1)}%
+            </p>
+            {trends?.savings && (
+              <div className="flex items-center space-x-1">
+                {trends.savings.direction === 'up' ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+                <span className={`text-sm font-medium ${
+                  trends.savings.direction === 'up' ? 'text-green-500' : 'text-red-500'
+                }`}>
+                  {trends.savings.value}%
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -181,10 +258,8 @@ const SpendingChart: React.FC = () => {
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
       <h2 className="text-lg font-semibold text-gray-900 mb-6">Spending Trends</h2>
       
-      {/* Custom Legend with Totals */}
       <CustomLegend />
       
-      {/* Chart */}
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -221,7 +296,7 @@ const SpendingChart: React.FC = () => {
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter= {(value) => formatCurrency(value)}
+              tickFormatter={value => formatCurrency(value)}
             />
             
             <Tooltip 

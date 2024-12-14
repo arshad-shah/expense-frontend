@@ -12,7 +12,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { createTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts, updateAccount } from "@/services/AccountService";
+import { updateAccount } from "@/services/AccountService";
 import { getCategories } from "@/services/CategoryService";
 import type { Account, Category } from "@/types";
 
@@ -20,15 +20,16 @@ interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTransactionAdded: () => void;
+  accounts: Account[];
 }
 
 const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onTransactionAdded,
+  accounts: initialAccounts,
 }) => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -44,18 +45,16 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     const fetchData = async () => {
       if (user) {
         try {
-          const [fetchedAccounts, fetchedCategories] = await Promise.all([
-            getAccounts(user.id),
+          const [fetchedCategories] = await Promise.all([
             getCategories(user.id),
           ]);
-          setAccounts(fetchedAccounts);
           setCategories(fetchedCategories);
 
           // Set default account if available
-          if (fetchedAccounts.length > 0) {
+          if (initialAccounts.length > 0) {
             setFormData((prev) => ({
               ...prev,
-              accountId: fetchedAccounts[0].id,
+              accountId: initialAccounts[0].id,
             }));
           }
         } catch (error) {
@@ -72,7 +71,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
     try {
       // Find the selected account
-      const selectedAccount = accounts.find(
+      const selectedAccount = initialAccounts.find(
         (account) => account.id === formData.accountId
       );
 
@@ -111,7 +110,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
       // Reset form
       setFormData({
-        accountId: accounts[0]?.id || "",
+        accountId: initialAccounts[0]?.id || "",
         categoryId: "",
         amount: 0,
         type: "EXPENSE",
@@ -141,7 +140,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {accounts.map((account) => (
+              {initialAccounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name} (Balance: ${account.balance.toFixed(2)})
                 </SelectItem>
@@ -152,10 +151,10 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         {/* Warning */}
         {formData.type === "EXPENSE" && formData.amount > 0 && (
           <p className="text-sm text-red-600 mt-1">
-            {accounts && accounts.find((acc) => acc.id === formData.accountId)?.balance !== undefined &&
-              accounts.find((acc) => acc.id === formData.accountId)!.balance < formData.amount &&
+            {initialAccounts && initialAccounts.find((acc) => acc.id === formData.accountId)?.balance !== undefined &&
+              initialAccounts.find((acc) => acc.id === formData.accountId)!.balance < formData.amount &&
               `Insufficient funds! The available balance is ${
-                accounts.find((acc) => acc.id === formData.accountId)!.balance.toFixed(2)
+                initialAccounts.find((acc) => acc.id === formData.accountId)!.balance.toFixed(2)
               }.`}
           </p>
         )}

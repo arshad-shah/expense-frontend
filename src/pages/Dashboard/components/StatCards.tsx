@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, CreditCard, Wallet, PiggyBank, AlertTriangle 
 import { useAuth } from '@/contexts/AuthContext';
 import { getAccountsWithBalance } from '@/services/AccountService';
 import { getTransactions } from '@/services/TransactionService';
-import type { Transaction } from '@/types';
+import type { Transaction, AccountWithBalance } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface StatData {
@@ -29,8 +29,15 @@ const StatCards: React.FC = () => {
         setLoading(true);
         
         // Get all accounts with their balances
-        const accounts = await getAccountsWithBalance(user.id);
-        const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+        const accountsResponse = await getAccountsWithBalance(user.id);
+        if (!accountsResponse.data || accountsResponse.error) {
+          throw new Error(accountsResponse.error || 'Failed to fetch accounts');
+        }
+        
+        const totalBalance = accountsResponse.data.reduce(
+          (sum, account) => sum + account.balance, 
+          0
+        );
 
         // Calculate dates for filtering
         const now = new Date();
@@ -40,23 +47,28 @@ const StatCards: React.FC = () => {
         const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
         // Get transactions for both months
-        const currentMonthTransactions = await getTransactions({
-          dateRange: {
-            startDate: currentMonthStart.toISOString(),
-            endDate: currentMonthEnd.toISOString()
-          }
-        });
+        const [currentMonthResponse, previousMonthResponse] = await Promise.all([
+          getTransactions({
+            dateRange: {
+              startDate: currentMonthStart.toISOString(),
+              endDate: currentMonthEnd.toISOString()
+            }
+          }),
+          getTransactions({
+            dateRange: {
+              startDate: previousMonthStart.toISOString(),
+              endDate: previousMonthEnd.toISOString()
+            }
+          })
+        ]);
 
-        const previousMonthTransactions = await getTransactions({
-          dateRange: {
-            startDate: previousMonthStart.toISOString(),
-            endDate: previousMonthEnd.toISOString()
-          }
-        });
+        if (!currentMonthResponse.data || !previousMonthResponse.data) {
+          throw new Error('Failed to fetch transactions');
+        }
 
         // Calculate monthly spending and savings
-        const currentMonthData = calculateMonthlyData(currentMonthTransactions);
-        const previousMonthData = calculateMonthlyData(previousMonthTransactions);
+        const currentMonthData = calculateMonthlyData(currentMonthResponse.data.items);
+        const previousMonthData = calculateMonthlyData(previousMonthResponse.data.items);
 
         // Calculate month-over-month changes
         const spendingChange = calculatePercentageChange(
@@ -84,7 +96,7 @@ const StatCards: React.FC = () => {
         });
       } catch (err) {
         console.error('Error fetching stats:', err);
-        setError('Failed to load statistics');
+        setError(err instanceof Error ? err.message : 'Failed to load statistics');
       } finally {
         setLoading(false);
       }

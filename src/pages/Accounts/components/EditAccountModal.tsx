@@ -13,6 +13,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Account, AccountInput, AccountType, Currency } from "@/types";
 import { updateAccount } from "@/services/AccountService";
+import { CURRENCY } from "@/constants";
 
 interface EditAccountModalProps {
   isOpen: boolean;
@@ -44,8 +45,6 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
     "CASH",
     "INVESTMENT",
   ];
-
-  const currencies: Currency[] = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CNY"];
 
   useEffect(() => {
     if (account) {
@@ -175,9 +174,9 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency} value={currency}>
-                      {currency}
+                  {CURRENCY.map((currency) => (
+                    <SelectItem key={currency.label} value={currency.value}>
+                      {currency.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>

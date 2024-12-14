@@ -6,19 +6,24 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
-  signOut
+  signOut,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { getUser, createUser } from '../services/userService';
-import type { User, UserInput } from '../types';
+import type { User, UserInput, WeekDay } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  loginWithGoogle: (rememberMe?: boolean) => Promise<void>;
   register: (userInput: UserInput, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -37,13 +42,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (userData) {
             setUser(userData);
           } else if (firebaseUser.email) {
-            // Create user data for Google sign-in if it doesn't exist
             const newUser = await createUser({
               id: firebaseUser.uid,
               email: firebaseUser.email,
               firstName: firebaseUser.displayName?.split(' ')[0] || '',
               lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-              currency: 'USD', // Default currency
+              currency: 'USD',
+              dateFormat: 'MM/DD/YYYY',
+              budgetStartDay: 1,
+              weekStartDay: "monday" as WeekDay,
             });
             setUser(newUser);
           }
@@ -60,8 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
+      // Set persistence based on rememberMe flag
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userData = await getUser(userCredential.user.uid);
       setUser(userData);
@@ -71,23 +81,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (rememberMe: boolean = false) => {
     try {
+      // Set persistence based on rememberMe flag
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       
-      // Check if user exists in our database
       const existingUser = await getUser(userCredential.user.uid);
       
       if (!existingUser && userCredential.user.email) {
-        // Create new user if they don't exist
         const newUser = await createUser({
-          id: userCredential.user.uid,
-          email: userCredential.user.email,
-          firstName: userCredential.user.displayName?.split(' ')[0] || '',
-          lastName: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
-          currency: 'USD', // Default currency
-        });
+              id: userCredential.user.uid,
+              email: userCredential.user.email,
+              firstName: userCredential.user.displayName?.split(' ')[0] || '',
+              lastName: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
+              currency: 'USD',
+              dateFormat: 'MM/DD/YYYY',
+              budgetStartDay: 1,
+              weekStartDay: "monday" as WeekDay,
+            });
         setUser(newUser);
       } else {
         setUser(existingUser);
@@ -98,22 +112,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userInput: UserInput, password: string) => {
-  const userCredential = await createUserWithEmailAndPassword(
-    auth,
-    userInput.email,
-    password
-  );
-  if (!auth.currentUser) {
-    throw new Error("User not authenticated");
-  }
-  const userData = await createUser({
-    ...userInput,
-    id: userCredential.user.uid,
-  });
-  setUser(userData);
-};
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
 
+  const register = async (userInput: UserInput, password: string) => {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      userInput.email,
+      password
+    );
+    if (!auth.currentUser) {
+      throw new Error("User not authenticated");
+    }
+    const userData = await createUser({
+      ...userInput,
+      id: userCredential.user.uid,
+    });
+    setUser(userData);
+  };
 
   const logout = async () => {
     try {
@@ -132,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loginWithGoogle,
     register,
     logout,
+    resetPassword,
   };
 
   return (

@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Login from './pages/login';
 import Register from './pages/register';
 import { ReactNode } from 'react';
+import ForgotPassword from '@/pages/forgotPassword/ForgotPassword';
 
 // Wrapper for authenticated pages with navigation and default layout
 const AuthenticatedLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
@@ -52,17 +53,26 @@ function App() {
               } 
             />
 
-            {/* Protected routes */}
+            <Route 
+              path="/forgot-password" 
+              element={
+                <PublicLayout>
+                  <ForgotPassword />
+                </PublicLayout>
+              } 
+            />
+
             <Route
-              path="/"
+              path="/profile"
               element={
                 <PrivateRoute>
                   <AuthenticatedLayout>
-                    <Dashboard />
+                    <Profile />
                   </AuthenticatedLayout>
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/accounts"
               element={
@@ -73,6 +83,18 @@ function App() {
                 </PrivateRoute>
               }
             />
+
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Dashboard />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
+
             <Route
               path="/transactions"
               element={
@@ -83,22 +105,12 @@ function App() {
                 </PrivateRoute>
               }
             />
-            <Route
+          <Route
               path="/budgets"
               element={
                 <PrivateRoute>
                   <AuthenticatedLayout>
                     <Budgets />
-                  </AuthenticatedLayout>
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <AuthenticatedLayout>
-                    <Profile />
                   </AuthenticatedLayout>
                 </PrivateRoute>
               }

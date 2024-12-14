@@ -13,6 +13,8 @@ import {
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import type { AccountInput } from "../../../types";
+import Alert from "@/components/Alert";
+import { CURRENCY } from "@/constants";
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -66,9 +68,9 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
-            {error}
-          </div>
+          <Alert variant="error" title="Error" onDismiss={() => setError("")}>
+            <p>{error}</p>
+          </Alert>
         )}
 
         {/* Account Name */}
@@ -163,11 +165,11 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="USD">USD - US Dollar</SelectItem>
-                <SelectItem value="EUR">EUR - Euro</SelectItem>
-                <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                {CURRENCY.map((currency) => (
+                    <SelectItem key={currency.label} value={currency.value}>
+                      {currency.label}
+                    </SelectItem>
+                  ))}
               </SelectGroup>
             </SelectContent>
           </Select>

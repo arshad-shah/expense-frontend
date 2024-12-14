@@ -1,34 +1,92 @@
-// src/types/auth.ts
+// src/types/account.ts
+
+import { FieldValue } from "firebase/firestore";
+
+
+// src/types/user.ts
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  currency: string;
+  
+  // Core Financial Settings
+  currency: Currency;
+  dateFormat: DateFormat;
+  budgetStartDay: number; // Day of month budget cycle starts
+  weekStartDay: WeekDay; // Which day weeks start on for weekly views
+  
+  // Stats
+  lastActive?: string;
+  signupDate: string;
+  totalTransactions: number;
+  totalAccounts: number;
+  
+  // Relationships
   accounts?: Account[];
   transactions?: Transaction[];
   categories?: Category[];
   budgets?: Budget[];
 }
 
+export interface UserStats {
+  totalAccounts: number;
+  totalTransactions: number;
+  totalCategories: number;
+  totalBudgets: number;
+  monthlySpending: number;
+  monthlyIncome: number;
+  savingsRate: number;
+  topCategories: Array<{
+    category: string;
+    amount: number;
+  }>;
+  trends: {
+    income: { value: number; direction: 'up' | 'down' };
+    spending: { value: number; direction: 'up' | 'down' };
+    savings: { value: number; direction: 'up' | 'down' };
+  };
+}
+
 export interface UserInput {
   email: string;
   firstName: string;
   lastName: string;
-  currency: string;
+  currency: Currency;
+  dateFormat: DateFormat;
+  budgetStartDay: number;
+  weekStartDay: WeekDay;
 }
 
-// src/types/account.ts
+export type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
+
+export type WeekDay = 'sunday' | 'monday';
+
+
 export interface Account {
+
   id: string;
+
+  userId: string;
+
   name: string;
+
   accountType: string;
+
   bankName: string;
+
   balance: number;
+
   currency: string;
+
   isActive: boolean;
-  lastSync?: string;
-  transactions?: Transaction[];
+
+  createdAt: FieldValue | string;
+
+  lastSync: {
+    seconds: number;
+    nanoseconds: number;
+  };
 }
 
 export interface AccountWithBalance extends Account {
@@ -197,6 +255,13 @@ export interface MonthlySpending {
   budgetAmount?: number;
   variance?: number;
 }
+export interface CategoryPerformance {
+  allocated: number;
+  spent: number;
+  name: string;
+  id: string;
+  percentageUsed: number;
+}
 
 export interface BudgetPerformance {
   budgetId: string;
@@ -206,6 +271,7 @@ export interface BudgetPerformance {
   remaining: number;
   percentageUsed: number;
   status: 'ON_TRACK' | 'WARNING' | 'EXCEEDED';
+  categoryPerformance: Record<string, CategoryPerformance>;
 }
 
 
