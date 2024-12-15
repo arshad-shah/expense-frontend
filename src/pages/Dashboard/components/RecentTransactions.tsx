@@ -232,7 +232,7 @@ const RecentTransactions: React.FC = () => {
     });
   };
 
-  const formatAmount = (amount: number, type: TransactionType): string => {
+  const formatAmount = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: user?.preferences?.currency || 'USD',

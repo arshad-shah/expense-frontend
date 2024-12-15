@@ -1,54 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import {UserStats, Currency, WeekDay, DateFormat, UserPreferences } from '@/types';
+import { useState, useEffect } from 'react';
+import {Currency, WeekDay, DateFormat, UserPreferences } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Select';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import Alert from '@/components/Alert';
-import { 
-  CreditCard, 
-  DollarSign, 
-  PiggyBank, 
-  Settings, 
-  TrendingUp, 
-  TrendingDown,
+import {
   Pencil,
-  X,
-  Check 
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ErrorState from '@/components/ErrorState';
 import PageLoader from '@/components/PageLoader';
 import { CURRENCY } from '@/constants';
 import { useUser } from '@/contexts/UserContext';
-import { formatCurrency, formatDate } from '@/lib/utils';
-
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ElementType;
-  trend?: {
-    value: number;
-    direction: 'up' | 'down';
-  };
-  color: string;
-  onEdit?: () => void;
-  isEditing?: boolean;
-  editValue?: string | number;
-  onEditChange?: (value: string) => void;
-  onSave?: () => void;
-  onCancel?: () => void;
-  hasEditButton?: boolean;
-}
+import { formatDate } from '@/lib/utils';
 
 const ProfileComponent = () => {
   const { user: authUser } = useAuth();
-  const { updateProfile, updatePreferences, updateStats, isUpdating } = useUser();
+  const { updateProfile, updatePreferences, isUpdating } = useUser();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editedStats, setEditedStats] = useState<Partial<UserStats>>({});
-  const [editingStatKey, setEditingStatKey] = useState<string | null>(null);
-  
   // Profile edit state
   const [editedProfile, setEditedProfile] = useState({
     firstName: '',
@@ -60,11 +31,6 @@ const ProfileComponent = () => {
       setEditedProfile({
         firstName: authUser.firstName,
         lastName: authUser.lastName,
-      });
-      setEditedStats({
-        monthlyIncome: authUser.stats.monthlyIncome,
-        monthlySpending: authUser.stats.monthlySpending,
-        savingsRate: authUser.stats.savingsRate,
       });
     }
   }, [authUser]);
@@ -101,91 +67,6 @@ const ProfileComponent = () => {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
     }
   };
-
-  const handleSaveStat = async (key: string) => {
-    if (!authUser) return;
-
-    try {
-      const response = await updateStats({ [key]: Number(editedStats[key as keyof UserStats]) });
-      if (response.status === 200) {
-        setSuccess('Stats updated successfully');
-        setEditingStatKey(null);
-        setTimeout(() => setSuccess(null), 3000);
-      } else {
-        setError('Failed to update stats');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update stats');
-    }
-  };
-
-  const StatCard: React.FC<StatCardProps> = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    trend, 
-    color,
-    isEditing,
-    editValue,
-    onEdit,
-    onEditChange,
-    onSave,
-    onCancel,
-    hasEditButton = true
-  }) => (
-    <div className="bg-white rounded-xl p-6 shadow-lg">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center gap-2">
-          <Icon className={`h-5 w-5 ${color}`} />
-          <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
-        </div>
-        {hasEditButton && (<div className="flex items-center gap-2">
-
-          {!isEditing ? (
-            <Button size='icon' variant='ghost' onClick={onEdit}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-          ) : (
-            <>
-              <Button size='icon' variant='success' onClick={onSave}>
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button size='icon' variant='danger' onClick={onCancel}>
-                <X className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>)}
-      </div>
-      <div className="space-y-2">
-        {isEditing ? (
-          <Input
-            type="number"
-            value={editValue}
-            onChange={(e) => onEditChange?.(e.target.value)}
-            className="text-lg"
-          />
-        ) : (
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-        )}
-        {trend && !isEditing && (
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              trend.direction === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-            }`}>
-              {trend.direction === 'up' ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              {trend.value}%
-            </div>
-            <span className="text-sm text-gray-500">vs last month</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   if (isUpdating) {
     return <PageLoader text='Loading profile...' />;
