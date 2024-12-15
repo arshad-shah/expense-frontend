@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserStats, UserInput, Currency, WeekDay, DateFormat } from '@/types';
+import {UserStats, Currency, WeekDay, DateFormat, UserPreferences } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Select';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
+import Alert from '@/components/Alert';
 import { 
   CreditCard, 
   DollarSign, 
   PiggyBank, 
   Settings, 
   TrendingUp, 
-  TrendingDown 
+  TrendingDown,
+  Pencil,
+  X,
+  Check 
 } from 'lucide-react';
-import { getUser, updateUser, getUserStats } from '@/services/userService';
 import { useAuth } from '@/contexts/AuthContext';
 import ErrorState from '@/components/ErrorState';
 import PageLoader from '@/components/PageLoader';
-import EmptyState from '@/components/EmptyState';
 import { CURRENCY } from '@/constants';
+import { useUser } from '@/contexts/UserContext';
+import { formatCurrency } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
@@ -25,82 +31,144 @@ interface StatCardProps {
     direction: 'up' | 'down';
   };
   color: string;
+  onEdit?: () => void;
+  isEditing?: boolean;
+  editValue?: string | number;
+  onEditChange?: (value: string) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  hasEditButton?: boolean;
 }
 
 const ProfileComponent = () => {
-  const { user : authUser} = useAuth();
-  const userId = authUser?.id;
-  const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { user: authUser } = useAuth();
+  const { updateProfile, updatePreferences, updateStats, isUpdating } = useUser();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedStats, setEditedStats] = useState<Partial<UserStats>>({});
+  const [editingStatKey, setEditingStatKey] = useState<string | null>(null);
+  
+  // Profile edit state
+  const [editedProfile, setEditedProfile] = useState({
+    firstName: '',
+    lastName: '',
+  });
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!userId) {
-        setError('User ID is not defined');
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        const [userData, userStats] = await Promise.all([
-          getUser(userId, true),
-          getUserStats(userId)
-        ]);
+    if (authUser) {
+      setEditedProfile({
+        firstName: authUser.firstName,
+        lastName: authUser.lastName,
+      });
+      setEditedStats({
+        monthlyIncome: authUser.stats.monthlyIncome,
+        monthlySpending: authUser.stats.monthlySpending,
+        savingsRate: authUser.stats.savingsRate,
+      });
+    }
+  }, [authUser]);
 
-        if (!userData) {
-          throw new Error('User not found');
-        }
-
-        setUser(userData);
-        setStats(userStats);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load user data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  const handleUpdatePreferences = async (updates: Partial<UserInput>) => {
-    if (!user) return;
+  const handleUpdatePreferences = async (updates: Partial<UserPreferences>) => {
+    if (!authUser) return;
     
     try {
-      setLoading(true);
-      await updateUser(user.id, updates);
-      const updatedUser = await getUser(user.id, true);
-      if (updatedUser) {
-        setUser(updatedUser);
+      const response = await updatePreferences(updates);
+      if (response.status === 200) {
+        setSuccess('Preferences updated successfully');
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError('Failed to update preferences');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update preferences');
-    } finally {
-      setLoading(false);
     }
   };
 
-    const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleSaveProfile = async () => {
+    if (!authUser) return;
+
+    try {
+      const response = await updateProfile(editedProfile);
+      if (response.status === 200) {
+        setSuccess('Profile updated successfully');
+        setIsEditingProfile(false);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError('Failed to update profile');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+    }
   };
 
+  const handleSaveStat = async (key: string) => {
+    if (!authUser) return;
 
-  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, trend, color }) => (
+    try {
+      const response = await updateStats({ [key]: Number(editedStats[key as keyof UserStats]) });
+      if (response.status === 200) {
+        setSuccess('Stats updated successfully');
+        setEditingStatKey(null);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError('Failed to update stats');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update stats');
+    }
+  };
+
+  const StatCard: React.FC<StatCardProps> = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    trend, 
+    color,
+    isEditing,
+    editValue,
+    onEdit,
+    onEditChange,
+    onSave,
+    onCancel,
+    hasEditButton = true
+  }) => (
     <div className="bg-white rounded-xl p-6 shadow-lg">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
-        <Icon className={`h-5 w-5 ${color}`} />
+        <div className="flex items-center gap-2">
+          <Icon className={`h-5 w-5 ${color}`} />
+          <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
+        </div>
+        {hasEditButton && (<div className="flex items-center gap-2">
+
+          {!isEditing ? (
+            <Button size='icon' variant='ghost' onClick={onEdit}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          ) : (
+            <>
+              <Button size='icon' variant='success' onClick={onSave}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button size='icon' variant='danger' onClick={onCancel}>
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>)}
       </div>
       <div className="space-y-2">
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {trend && (
+        {isEditing ? (
+          <Input
+            type="number"
+            value={editValue}
+            onChange={(e) => onEditChange?.(e.target.value)}
+            className="text-lg"
+          />
+        ) : (
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+        )}
+        {trend && !isEditing && (
           <div className="flex items-center gap-2">
             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
               trend.direction === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -119,94 +187,128 @@ const ProfileComponent = () => {
     </div>
   );
 
-  if (loading) {
-    return (
-      <PageLoader text='Loading profile...' />
-    );
+  if (isUpdating) {
+    return <PageLoader text='Loading profile...' />;
   }
 
-  if (error || !user || !stats) {
-    return (
-      <ErrorState message={error || 'Failed to load profile'} onRetry={() => window.location.reload()} />
-    );
+  if (error || !authUser) {
+    return <ErrorState message={error || 'Failed to load profile'} onRetry={() => window.location.reload()} />;
   }
 
   return (
     <div className="bg-gradient-to-br p-8">
       <div className="mx-auto space-y-8">
-        {/* Header */}
+        {success && (
+          <Alert variant="success">
+              {success}
+          </Alert>
+        )}
+
+        {/* Header with Edit */}
         <div className="bg-white rounded-xl p-8 shadow-lg">
-          <div className="flex items-center gap-6">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">
-                {user.firstName[0]}{user.lastName[0]}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {user.firstName} {user.lastName}
-              </h1>
-              <p className="text-gray-500">{user.email}</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Member since {new Date(user.signupDate).toLocaleDateString()}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">
+                  {authUser.firstName[0]}{authUser.lastName[0]}
+                </span>
+              </div>
+              {isEditingProfile ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="First Name"
+                      value={editedProfile.firstName}
+                      onChange={(e) => setEditedProfile(prev => ({ ...prev, firstName: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Last Name"
+                      value={editedProfile.lastName}
+                      onChange={(e) => setEditedProfile(prev => ({ ...prev, lastName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => setIsEditingProfile(false)} variant="outline">Cancel</Button>
+                    <Button onClick={handleSaveProfile} variant='primary'>Save</Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {authUser.firstName} {authUser.lastName}
+                    </h1>
+                    <Button size='icon' variant='ghost' onClick={() => setIsEditingProfile(true)} className="text-gray-400 hover:text-gray-600">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-gray-500">{authUser.email}</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Member since {new Date(authUser.stats.signupDate).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid with Edit */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Monthly Income"
-            value={formatCurrency(stats.monthlyIncome)}
+            value={formatCurrency(authUser.stats.monthlyIncome, authUser.preferences.currency)}
             icon={DollarSign}
-            trend={stats.trends.income}
+            trend={{
+              value: 5,
+              direction: 'up'
+            }}
             color="text-green-600"
+            isEditing={editingStatKey === 'monthlyIncome'}
+            editValue={editedStats.monthlyIncome}
+            onEdit={() => setEditingStatKey('monthlyIncome')}
+            onEditChange={(value) => setEditedStats(prev => ({ ...prev, monthlyIncome: Number(value) }))}
+            onSave={() => handleSaveStat('monthlyIncome')}
+            onCancel={() => setEditingStatKey(null)}
           />
           <StatCard
             title="Monthly Spending"
-            value={formatCurrency(stats.monthlySpending)}
+            value={formatCurrency(authUser.stats.monthlySpending, authUser.preferences.currency)}
             icon={CreditCard}
-            trend={stats.trends.spending}
+            trend={{
+              value: 2,
+              direction: 'down'
+            }}
             color="text-red-600"
+            isEditing={editingStatKey === 'monthlySpending'}
+            editValue={editedStats.monthlySpending}
+            onEdit={() => setEditingStatKey('monthlySpending')}
+            onEditChange={(value) => setEditedStats(prev => ({ ...prev, monthlySpending: Number(value) }))}
+            onSave={() => handleSaveStat('monthlySpending')}
+            onCancel={() => setEditingStatKey(null)}
           />
           <StatCard
             title="Savings Rate"
-            value={`${stats.savingsRate.toFixed(1)}%`}
+            value={`${authUser.stats.savingsRate.toFixed(1)}%`}
             icon={PiggyBank}
-            trend={stats.trends.savings}
+            trend={{
+              value: 3,
+              direction: 'up'
+            }}
             color="text-purple-600"
+            isEditing={editingStatKey === 'savingsRate'}
+            editValue={editedStats.savingsRate}
+            onEdit={() => setEditingStatKey('savingsRate')}
+            onEditChange={(value) => setEditedStats(prev => ({ ...prev, savingsRate: Number(value) }))}
+            onSave={() => handleSaveStat('savingsRate')}
+            onCancel={() => setEditingStatKey(null)}
           />
           <StatCard
             title="Active Budgets"
-            value={stats.totalBudgets}
+            value={authUser.stats.totalBudgets}
             icon={Settings}
             color="text-indigo-600"
+            hasEditButton={false}
           />
-        </div>
-
-        {/* Categories */}
-        <div className="bg-white rounded-xl p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Top Spending Categories</h2>
-          <div className="space-y-4">
-            {stats.topCategories.length > 0 ? (
-              stats.topCategories.map((category, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span className="text-sm font-medium text-purple-700">{index + 1}</span>
-                </div>
-                <span className="font-medium text-gray-700">{category.category}</span>
-                </div>
-                <span className="font-semibold text-gray-900">
-                {formatCurrency(category.amount)}
-                </span>
-              </div>
-              ))
-            ) : (
-              <EmptyState message='No transactions found, start adding transactions to see your top categories' />
-            )}
-          </div>
         </div>
 
         {/* Settings/Preferences */}
@@ -218,7 +320,10 @@ const ProfileComponent = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Currency
                 </label>
-                <Select value={user.currency} onValueChange={(value: Currency) => handleUpdatePreferences({ currency: value })}>
+                <Select 
+                  value={authUser.preferences.currency} 
+                  onValueChange={(value: Currency) => handleUpdatePreferences({ currency: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
@@ -236,7 +341,10 @@ const ProfileComponent = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date Format
                 </label>
-                <Select value={user.dateFormat} onValueChange={(value: DateFormat) => handleUpdatePreferences({ dateFormat: value })}>
+                <Select 
+                  value={authUser.preferences.dateFormat} 
+                  onValueChange={(value: DateFormat) => handleUpdatePreferences({ dateFormat: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select date format" />
                   </SelectTrigger>
@@ -252,7 +360,10 @@ const ProfileComponent = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Week Starts On
                 </label>
-                <Select value={user.weekStartDay} onValueChange={(value: WeekDay) => handleUpdatePreferences({ weekStartDay: value })}>
+                <Select 
+                  value={authUser.preferences.weekStartDay} 
+                  onValueChange={(value: WeekDay) => handleUpdatePreferences({ weekStartDay: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select start day" />
                   </SelectTrigger>

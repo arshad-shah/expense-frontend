@@ -13,8 +13,8 @@ import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { DateRangePicker } from "@/components/DateRangePicker"; // Import the reusable DateRangePicker
 import { useAuth } from "@/contexts/AuthContext";
-import { getCategories } from "@/services/CategoryService";
 import type { Account, Category, TransactionFilters as FilterType, TransactionType } from "@/types";
+import { getCategories } from "@/services/userService";
 
 interface TransactionFiltersProps {
   isOpen: boolean;
@@ -42,7 +42,9 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           const [fetchedCategories] = await Promise.all([
             getCategories(user.id),
           ]);
-          setCategories(fetchedCategories);
+          if (fetchedCategories.data) {
+            setCategories(fetchedCategories.data);
+          }
         } catch (error) {
           console.error("Error fetching data:", error);
         }

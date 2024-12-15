@@ -3,6 +3,7 @@ import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, PiggyBank } from 
 import { Transaction } from '@/types';
 import React, { useEffect, useState } from 'react';
 import { getTransactions } from '@/services/TransactionService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SummaryCardsProps {
   currentTransactions: Transaction[];
@@ -19,6 +20,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   currentTransactions,
   formatCurrency
 }) => {
+  const {user} = useAuth();
   const [previousMonthTotals, setPreviousMonthTotals] = useState<MonthlyTotals | null>(null);
 
   useEffect(() => {
@@ -29,12 +31,17 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       const endOfPreviousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
       try {
-        const response = await getTransactions({
-          dateRange: {
-            startDate: startOfPreviousMonth.toISOString(),
-            endDate: endOfPreviousMonth.toISOString()
+        if (!user) return;
+
+        const response = await getTransactions(
+          user.id,
+          {
+            dateRange: {
+              startDate: startOfPreviousMonth.toISOString(),
+              endDate: endOfPreviousMonth.toISOString()
+            }
           }
-        });
+        );
 
         if (response.data) {
           const previousTransactions = response.data.items;

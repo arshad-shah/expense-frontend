@@ -16,6 +16,26 @@ import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
+
+const MobileMenuToggle: React.FC<{ isOpen: boolean; onClick: () => void }> = ({ isOpen, onClick }) => (
+  <motion.div whileTap={{ scale: 0.95 }}>
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={onClick}
+      className="h-9 w-9 p-0 inline-flex items-center justify-center rounded-xl hover:bg-indigo-50"
+    >
+      <AnimatePresence>
+        {isOpen ? (
+          <X className="h-5 w-5 text-indigo-600" />
+        ) : (
+          <Menu className="h-5 w-5 text-indigo-600" />
+        )}
+      </AnimatePresence>
+    </Button>
+  </motion.div>
+);
+
 interface NavItem {
   path: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -177,30 +197,7 @@ const Navigation: React.FC = () => {
             </div>
 
             <div className="flex items-center md:hidden">
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="h-9 w-9 p-0 inline-flex items-center justify-center rounded-xl hover:bg-indigo-50"
-                >
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={isMobileMenuOpen ? 'close' : 'menu'}
-                      initial={{ opacity: 0, rotate: -180 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 180 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {isMobileMenuOpen ? (
-                        <X className="h-5 w-5 text-indigo-600" />
-                      ) : (
-                        <Menu className="h-5 w-5 text-indigo-600" />
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                </Button>
-              </motion.div>
+             <MobileMenuToggle isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
             </div>
           </div>
         </div>
@@ -214,6 +211,9 @@ const Navigation: React.FC = () => {
               variants={menuVariants}
               className="fixed inset-0 z-40 md:hidden bg-white/95 backdrop-blur-sm pt-14"
             >
+              <div className="flex  items-center justify-end px-3 sm:px-4 py-2.5 border-b border-gray-100">
+                 <MobileMenuToggle isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+              </div>
               <motion.div 
                 className="h-full px-3 py-4 space-y-2 overflow-y-auto"
                 variants={menuVariants}

@@ -13,8 +13,9 @@ import { Button } from "@/components/Button";
 import { createTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateAccount } from "@/services/AccountService";
-import { getCategories } from "@/services/CategoryService";
-import type { Account, Category } from "@/types";
+import type { Account, Category, TransactionType } from "@/types";
+import { getCategories } from "@/services/userService";
+import Alert from "@/components/Alert";
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -32,11 +33,12 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     accountId: "",
     categoryId: "",
     amount: 0,
-    type: "EXPENSE",
+    type: "EXPENSE" as TransactionType,
     description: "",
     transactionDate: new Date().toISOString().split("T")[0],
   });
@@ -48,8 +50,9 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           const [fetchedCategories] = await Promise.all([
             getCategories(user.id),
           ]);
-          setCategories(fetchedCategories);
-
+          if (fetchedCategories.data) {
+            setCategories(fetchedCategories.data);
+          }
           // Set default account if available
           if (initialAccounts.length > 0) {
             setFormData((prev) => ({
@@ -59,6 +62,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           }
         } catch (error) {
           console.error("Error fetching data:", error);
+          setError("Error fetching data. Please try again.");
         }
       }
     };
@@ -89,20 +93,34 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       }
 
       // Proceed with creating the transaction
-      await createTransaction({
-        ...formData,
-        userId: user?.id as string,
-      });
+      if (user?.id) {
+        await createTransaction(user.id, {
+          ...formData,
+          userId: user.id,
+          isRecurring: false, // or set this based on your logic
+          metadata: {}, // or set this based on your logic
+          categoryName: categories.find(category => category.id === formData.categoryId)?.name || "",
+          accountName: initialAccounts.find(account => account.id === formData.accountId)?.name || "",
+        });
+      } else {
+        console.error("User ID is undefined");
+      }
 
       // make sure we remove the amount from the account balance
       if (formData.type === "EXPENSE") {
-        await updateAccount(selectedAccount.id, {
-          balance: selectedAccount.balance - formData.amount,
-        });
+        if (user?.id) {
+          await updateAccount(user.id, selectedAccount.id, {
+            balance: selectedAccount.balance - formData.amount,
+          });
+        }
       } else {
-        await updateAccount(selectedAccount.id, {
-          balance: selectedAccount.balance + formData.amount,
-        });
+        if (user?.id) {
+          await updateAccount(user.id, selectedAccount.id, {
+            balance: selectedAccount.balance + formData.amount,
+          });
+        } else {
+          console.error("User ID is undefined");
+        }
       }
 
       onTransactionAdded();
@@ -127,15 +145,18 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Add New Transaction">
+      {error && (
+        <Alert variant="error" onDismiss={() => setError("")}>
+          {error}
+        </Alert>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
       {/* Account Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Account</label>
         <Select
           value={formData.accountId}
           onValueChange={(value) => setFormData({ ...formData, accountId: value })}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger label="Account" className="w-full">
             <SelectValue placeholder="Select account" />
           </SelectTrigger>
           <SelectContent>
@@ -158,17 +179,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               }.`}
           </p>
         )}
-      </div>
 
 
         {/* Transaction Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
           <Select
             value={formData.type}
-            onValueChange={(value) => setFormData({ ...formData, type: value, categoryId: "" })}
+            onValueChange={(value) => setFormData({ ...formData, type: value as TransactionType, categoryId: "" })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger label="Type" className="w-full">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -178,16 +196,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
           <Select
             value={formData.categoryId}
             onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger label="Category" className="w-full">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -202,45 +217,38 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Amount Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
           <Input
             type="number"
             step="0.01"
+            label="Amount"
             value={formData.amount}
             onChange={(e) =>
               setFormData({ ...formData, amount: parseFloat(e.target.value) })
             }
             required
           />
-        </div>
 
         {/* Description Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
           <Input
             type="text"
+            label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             required
           />
-        </div>
 
         {/* Date Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Date</label>
           <Input
             type="date"
+            label="Transaction Date"
             value={formData.transactionDate}
             onChange={(e) =>
               setFormData({ ...formData, transactionDate: e.target.value })
             }
             required
           />
-        </div>
 
         {/* Actions */}
         <div className="flex justify-end space-x-2">

@@ -8,7 +8,7 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
   icon?: ReactNode;
   helperText?: string;
   isLoading?: boolean;
-  variant?: "default" | "filled" | "outline";
+  variant?: "default" | "filled" | "outline" | "minimal";
   fullWidth?: boolean;
   inputSize?: "sm" | "md" | "lg";
 }
@@ -29,7 +29,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const variants = {
       default: "border-gray-200 bg-white hover:border-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20",
       filled: "border-transparent bg-gray-50 hover:bg-gray-100/80 focus:bg-white focus:border-indigo-500 focus:ring-indigo-500/20",
-      outline: "border-2 border-gray-200 bg-transparent hover:border-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+      outline: "border-2 border-gray-200 bg-transparent hover:border-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20",
+      minimal: "border-transparent bg-transparent hover:bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-indigo-500/20"
     };
 
     const sizes = {
@@ -44,13 +45,33 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       lg: "h-5 w-5"
     };
 
+    const labelSizes = {
+      sm: "text-xs",
+      md: "text-sm",
+      lg: "text-sm"
+    };
+
     return (
-      <div className={cn("space-y-2", fullWidth ? "w-full" : "w-auto")}>
+      <motion.div 
+        className={cn("space-y-2", fullWidth ? "w-full" : "w-auto")}
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
         {label && (
-          <div className="flex items-center justify-between">
+          <motion.div 
+            className="flex items-center justify-between"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
             <label
               htmlFor={props.id}
-              className="block text-sm font-medium text-gray-700"
+              className={cn(
+                "block font-medium text-gray-700 transition-colors duration-200",
+                labelSizes[inputSize],
+                error && "text-red-500"
+              )}
             >
               {label}
             </label>
@@ -61,21 +82,28 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 className="h-4 w-4 rounded-full border-2 border-gray-100 border-t-indigo-600"
               />
             )}
-          </div>
+          </motion.div>
         )}
 
-        <div className="relative">
+        <motion.div 
+          className="relative"
+          whileTap={{ scale: 0.995 }}
+        >
           {icon && (
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+            <motion.div 
+              className="pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center w-10 text-gray-400"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2 }}
+            >
               <motion.div
-                whileHover={{ scale: 1.1 }}
-                className={cn(iconSizes[inputSize])}
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                className={cn("flex items-center justify-center", iconSizes[inputSize])}
               >
                 {icon}
               </motion.div>
-            </div>
+            </motion.div>
           )}
-
           <input
             ref={ref}
             className={cn(
@@ -92,7 +120,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             )}
             {...props}
           />
-        </div>
+
+          <motion.div
+            className="absolute inset-0 rounded-lg pointer-events-none"
+            initial={false}
+            animate={{
+              boxShadow: error 
+                ? "0 0 0 1px rgba(239, 68, 68, 0.2)" 
+                : props.disabled 
+                ? "none" 
+                : "0 0 0 0 rgba(99, 102, 241, 0)"
+            }}
+            transition={{ duration: 0.2 }}
+          />
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {(error || helperText) && (
@@ -124,12 +165,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                   <span>{error}</span>
                 </motion.p>
               ) : helperText ? (
-                <p className="text-sm text-gray-500">{helperText}</p>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-gray-500"
+                >
+                  {helperText}
+                </motion.p>
               ) : null}
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     );
   }
 );

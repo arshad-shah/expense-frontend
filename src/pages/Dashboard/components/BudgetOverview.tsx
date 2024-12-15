@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTransactions } from '@/services/TransactionService';
 import { getBudgets } from '@/services/BudgetService';
-import type { Transaction, TransactionFilters, Budget, ApiResponse, PaginatedResponse } from '@/types';
+import type { 
+  TransactionFilters,
+} from '@/types';
 import EmptyState from '@/components/EmptyState';
 import { TrendingUp, AlertTriangle, Circle, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface BudgetWithSpending {
   id: string;
@@ -36,12 +38,24 @@ const BudgetOverview: React.FC = () => {
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
         // Fetch budgets
-        const budgetsData = await getBudgets(user.id, { isActive: true });
+        const budgetsResponse = await getBudgets(user.id, { 
+          isActive: true 
+        });
         
-        if (!budgetsData || budgetsData.length === 0) {
+        if (!budgetsResponse.data || budgetsResponse.data.length === 0) {
           setBudgets([]);
           return;
         }
+
+        const budgetsData = budgetsResponse.data;
+        
+        // Get all unique category IDs from budgets
+        const categoryIds = Array.from(new Set(
+          budgetsData.flatMap(budget => 
+            Object.values(budget.categories).map(c => c.categoryId)
+          )
+        ));
+        
 
         // Prepare filters for transactions
         const filters: TransactionFilters = {
@@ -49,15 +63,17 @@ const BudgetOverview: React.FC = () => {
             startDate: startOfMonth.toISOString(),
             endDate: endOfMonth.toISOString()
           },
-          categoryIds: budgetsData.flatMap(budget => 
-            budget.categories?.map(cat => cat.category.id) || []
-          )
+          categoryIds,
+          types: ['EXPENSE']
         };
 
         // Fetch transactions
-        const transactionsResponse: ApiResponse<PaginatedResponse<Transaction>> = 
-          await getTransactions(filters, 1, 1000);
-
+        const transactionsResponse = await getTransactions(
+          user.id, 
+          filters,
+          1,
+          1000
+        );
         if (!transactionsResponse.data) {
           throw new Error('Failed to fetch transactions');
         }
@@ -65,17 +81,28 @@ const BudgetOverview: React.FC = () => {
         const transactions = transactionsResponse.data.items;
 
         // Process budget data with spending
-        const budgetWithSpending = budgetsData.map(budget => ({
-          id: budget.id,
-          category: budget.name,
-          spent: calculateCategorySpending(
-            transactions,
-            budget.categories?.map(cat => cat.category.id) || []
-          ),
-          limit: budget.amount,
-          categoryColor: budget.categories?.[0]?.category.color,
-          currency: user.currency
-        }));
+        const budgetWithSpending = budgetsData.map(budget => {
+          // Calculate total spending for all categories in this budget
+          const spent = Object.entries(budget.categories).reduce((total, [, allocation]) => {
+            const categoryTransactions = transactions.filter(t => 
+              t.categoryId === allocation.categoryId && t.type === 'EXPENSE'
+            );
+            return total + categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+          }, 0);
+
+          // Get first category color for visualization
+          const firstCategoryId = Object.keys(budget.categories)[0];
+          const firstAllocation = budget.categories[firstCategoryId];
+
+          return {
+            id: budget.id,
+            category: budget.name,
+            spent,
+            limit: budget.amount,
+            categoryColor: firstAllocation?.status,
+            currency: user.preferences.currency
+          };
+        });
 
         // Sort budgets by percentage spent
         setBudgets(budgetWithSpending.sort((a, b) => 
@@ -91,27 +118,6 @@ const BudgetOverview: React.FC = () => {
 
     fetchBudgetData();
   }, [user]);
-
-  const calculateCategorySpending = (
-    transactions: Transaction[], 
-    categoryIds: string[]
-  ): number => {
-    return transactions.reduce((total, transaction) => {
-      if (transaction.type === 'EXPENSE' && categoryIds.includes(transaction.category.id)) {
-        return total + transaction.amount;
-      }
-      return total;
-    }, 0);
-  };
-
-  const formatCurrency = (amount: number, currency: string = user?.currency || 'USD'): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const getProgressStyle = (percentage: number): React.CSSProperties => {
     if (percentage > 100) {
@@ -144,6 +150,7 @@ const BudgetOverview: React.FC = () => {
     if (percentage > 70) return 'text-emerald-600 bg-emerald-50';
     return 'text-blue-600 bg-blue-50';
   };
+  
 
   // Calculate total budget and spent
   const totals = budgets.reduce((acc, curr) => ({
@@ -250,10 +257,10 @@ const BudgetOverview: React.FC = () => {
           <div className="flex items-end justify-between">
             <div>
               <span className="text-2xl font-bold text-gray-900">
-                {formatCurrency(totals.spent)}
+                {formatCurrency(totals.spent, user?.preferences.currency || 'USD')}
               </span>
               <span className="text-sm text-gray-500 ml-1">
-                of {formatCurrency(totals.limit)}
+                of {formatCurrency(totals.limit, user?.preferences.currency || 'USD')}
               </span>
             </div>
           </div>
@@ -300,11 +307,11 @@ const BudgetOverview: React.FC = () => {
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <span className="text-sm font-medium text-gray-900">
-                      {formatCurrency(budget.spent, budget.currency)}
+                      {formatCurrency(budget.spent, user?.preferences.currency || 'USD')}
                     </span>
                     <span className="text-xs text-gray-400 mx-1">/</span>
                     <span className="text-sm text-gray-500">
-                      {formatCurrency(budget.limit, budget.currency)}
+                      {formatCurrency(budget.limit, user?.preferences.currency || 'USD')}
                     </span>
                   </div>
                 </div>
@@ -313,7 +320,7 @@ const BudgetOverview: React.FC = () => {
                   <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     <span>
-                      Over budget by {formatCurrency(budget.spent - budget.limit, budget.currency)}
+                      Over budget by {formatCurrency(budget.spent - budget.limit, user?.preferences.currency || 'USD')}
                     </span>
                   </div>
                 )}

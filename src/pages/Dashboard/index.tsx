@@ -150,12 +150,6 @@ const Dashboard: React.FC = () => {
           </h1>
           <p className="text-gray-600">Here's your financial overview</p>
         </div>
-        <div className="text-left sm:text-right">
-          <p className="text-sm text-gray-600">Last updated</p>
-          <p className="text-sm font-medium text-gray-900">
-            {new Date().toLocaleDateString()}
-          </p>
-        </div>
       </div>
 
       {/* Fixed Stats Grid */}

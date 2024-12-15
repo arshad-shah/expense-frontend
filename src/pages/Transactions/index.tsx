@@ -10,7 +10,6 @@ import type {
   TransactionFilters as FilterType, 
   Account, 
   PaginatedResponse,
-  ApiResponse 
 } from '@/types';
 import TransactionHeader from './components/TransactionHeader';
 import ErrorState from '@/components/ErrorState';
@@ -21,7 +20,6 @@ import SummaryCards from '@/pages/Transactions/components/SummaryCards';
 const DEFAULT_PAGE_SIZE = 10;
 
 const Transactions: React.FC = () => {
-  // Auth
   const { user } = useAuth();
 
   // State Management
@@ -61,8 +59,12 @@ const Transactions: React.FC = () => {
 
     try {
       setLoading(prev => ({ ...prev, accounts: true }));
-      const fetchedAccounts = await getAccounts(user.id);
-      setAccounts(fetchedAccounts);
+      const response = await getAccounts(user.id);
+      if ('data' in response && response.data) {
+        setAccounts(response.data as PaginatedResponse<Account>);
+      } else {
+        throw new Error('Failed to fetch accounts');
+      }
     } catch (err) {
       console.error('Error fetching accounts:', err);
       setError('Failed to load accounts');
@@ -78,11 +80,21 @@ const Transactions: React.FC = () => {
       setLoading(prev => ({ ...prev, transactions: true }));
       setError(null);
 
-      const response: ApiResponse<PaginatedResponse<Transaction>> = 
-        await getTransactions(filters);;
-        
+      fetchAccounts();
+
+      const checkedFilters = filters.accountIds ? filters : { ...filters, accountIds: accounts.items.map(acc => acc.id) };
+
+      // Call the updated transaction service with proper parameters
+      const response = await getTransactions(
+        user.id,
+        checkedFilters,
+        transactions.page,
+        transactions.limit
+      );
+      
+
       if (!response.data) {
-        throw new Error('Failed to fetch transactions');
+        throw new Error(response.error || 'Failed to fetch transactions');
       }
 
       setTransactions(response.data);
@@ -96,23 +108,22 @@ const Transactions: React.FC = () => {
     } finally {
       setLoading(prev => ({ ...prev, transactions: false }));
     }
-  }, [user?.id, filters]);
+  }, [user?.id, filters, transactions.page, transactions.limit]);
 
   // Effects
   useEffect(() => {
     fetchTransactions();
-    fetchAccounts();
   }, [fetchTransactions, fetchAccounts]);
 
-  // Handlers
+  // CSV Export Handler
   const handleExport = () => {
     const csv = transactions.items.map(t => ({
       date: new Date(t.transactionDate).toLocaleDateString(),
       description: t.description,
       amount: t.amount,
       type: t.type,
-      category: t.category.name,
-      account: t.account.name
+      category: t.categoryName, // Updated to use flat structure
+      account: t.accountName,   // Updated to use flat structure
     }));
     
     const csvString = [
@@ -137,26 +148,16 @@ const Transactions: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Currency Formatter
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: user?.currency || 'USD',
+      currency: user?.preferences?.currency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  }, [user?.currency]);
+  }, [user?.preferences?.currency]);
 
-  const getTotalIncome = useCallback(() => {
-    return transactions.items
-      .filter(t => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions.items]);
-
-  const getTotalExpenses = useCallback(() => {
-    return transactions.items
-      .filter(t => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions.items]);
 
   // Modal Handlers
   const handleOpenModal = (modal: keyof typeof modals) => {
@@ -167,10 +168,12 @@ const Transactions: React.FC = () => {
     setModals(prev => ({ ...prev, [modal]: false }));
   };
 
+  // Loading State
   if (loading.transactions && loading.accounts) {
     return <PageLoader text="Loading your transactions..." />;
   }
 
+  // Error State
   if (error) {
     return (
       <ErrorState
@@ -219,6 +222,7 @@ const Transactions: React.FC = () => {
       <TransactionList
         transactions={transactions.items}
         onUpdate={fetchTransactions}
+        categories={[]}
       />
 
       {/* Modals */}

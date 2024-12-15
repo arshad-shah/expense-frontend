@@ -13,19 +13,26 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/EmptyState";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
-import type { Transaction } from "@/types";
+import type {Transaction } from "@/types";
 import EditTransactionModal from "./EditTransactionModal";
 import { deleteTransaction } from "@/services/TransactionService";
 import { Dropdown, type DropdownItemType } from "@/components/Dropdown";
 import { Button } from "@/components/Button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+
+import type { Category } from "@/types";
 
 interface TransactionListProps {
   transactions: Transaction[];
+  categories: Category[];
   onUpdate: () => void;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdate }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ transactions, categories,  onUpdate }) => {
+  const getCategory = (categoryId: string) => 
+    categories.find(category => category.id === categoryId);
+  const { user } = useAuth();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [expandedTransaction, setExpandedTransaction] = useState<string | null>(null);
@@ -33,15 +40,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   const handleDelete = async () => {
-    if (transactionToDelete) {
-      try {
-        await deleteTransaction(transactionToDelete.id);
+    if (!user?.id || !transactionToDelete) return;
+
+    try {
+      const response = await deleteTransaction(
+        user.id,
+        transactionToDelete.accountId,
+        transactionToDelete.id
+      );
+
+      if (response.status === 200) {
         onUpdate();
-      } catch (error) {
-        console.error("Error deleting transaction:", error);
-      } finally {
-        setTransactionToDelete(null);
+      } else {
+        throw new Error(response.error || 'Failed to delete transaction');
       }
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      // Here you might want to show an error toast or message
+    } finally {
+      setTransactionToDelete(null);
     }
   };
 
@@ -56,7 +73,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: currency || 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Math.abs(amount));
@@ -202,19 +219,19 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
                       hoveredRow === transaction.id ? "opacity-100" : "opacity-90"
                     )}
                     style={{
-                      backgroundColor: `${transaction.category.color}15`,
-                      color: transaction.category.color
+                      backgroundColor: `${getCategory(transaction.categoryId)?.color || '#6B7280'}15`,
+                      color: getCategory(transaction.categoryId)?.color || '#6B7280'
                     }}
                   >
                     <Tag className="w-3 h-3" />
-                    {transaction.category.name}
+                    {transaction.categoryName}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <Bank className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      {transaction.account.name}
+                      {transaction.accountName}
                     </span>
                   </div>
                 </td>
@@ -228,7 +245,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
                     )}
                   >
                     {transaction.type === "INCOME" ? "+" : "-"}
-                    {formatAmount(transaction.amount, transaction.account.currency)}
+                    {formatAmount(transaction.amount, user?.preferences?.currency || 'USD')}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right relative">
@@ -279,7 +296,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
                   )}
                 >
                   {transaction.type === "INCOME" ? "+" : "-"}
-                  {formatAmount(transaction.amount, transaction.account.currency)}
+                  {formatAmount(transaction.amount, user?.preferences?.currency || 'USD')}
                 </span>
                 <motion.div
                   animate={{ rotate: expandedTransaction === transaction.id ? 180 : 0 }}
@@ -308,11 +325,11 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
                       <span 
                         className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                         style={{
-                          backgroundColor: `${transaction.category.color}15`,
-                          color: transaction.category.color
+                          backgroundColor: `${getCategory(transaction.categoryId)?.color || '#6B7280'}15`,
+                          color: getCategory(transaction.categoryId)?.color || '#6B7280'
                         }}
                       >
-                        {transaction.category.name}
+                        {transaction.categoryName}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -320,7 +337,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onUpdat
                         <Bank className="w-4 h-4 text-gray-400" />
                         Account
                       </span>
-                      <span className="text-sm text-gray-900">{transaction.account.name}</span>
+                      <span className="text-sm text-gray-900">{transaction.accountName}</span>
                     </div>
                     <div className="flex justify-end pt-2 relative">
                       <ActionMenu transaction={transaction} />

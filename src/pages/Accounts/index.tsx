@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { 
-  Plus, 
   CreditCard, 
   PiggyBank, 
   DollarSign, 
@@ -37,11 +36,11 @@ const Accounts: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+
   const fetchAccounts = async (page: number = 1) => {
     try {
-      if (!user) return;
+      if (!user?.id) return;
       
       if (page === 1) {
         setLoading(true);
@@ -49,15 +48,22 @@ const Accounts: React.FC = () => {
         setLoadingMore(true);
       }
 
-      const fetchedAccounts = await getAccounts(user.id, page, ITEMS_PER_PAGE);
+      const response = await getAccounts(user.id, page, ITEMS_PER_PAGE);
       
-      if (page === 1) {
-        setAccountsData(fetchedAccounts);
+      if (response.status === 200 && response.data) {
+        if (page === 1) {
+          setAccountsData(response.data);
+        } else {
+          setAccountsData(prev => ({
+            items: [...prev.items, ...(response.data?.items || [])],
+            total: response.data?.total || prev.total,
+            page: response.data?.page || prev.page,
+            limit: response.data?.limit || prev.limit,
+            hasMore: response.data?.hasMore || prev.hasMore,
+          }));
+        }
       } else {
-        setAccountsData(prev => ({
-          ...fetchedAccounts,
-          items: [...prev.items, ...fetchedAccounts.items],
-        }));
+        setError(response.error || "Failed to load accounts");
       }
     } catch (err) {
       setError("Failed to load accounts");
@@ -68,29 +74,35 @@ const Accounts: React.FC = () => {
     }
   };
 
-    const fetchData = async () => {
+  const fetchTransactions = async () => {
+    if (!user?.id) return;
+    
+    try {
       // Fetch last 2 months of transactions
       const now = new Date();
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       
-      const transactionsResponse = await getTransactions({
+      const response = await getTransactions(user.id, {
         dateRange: {
           startDate: startOfLastMonth.toISOString(),
           endDate: now.toISOString()
         }
       });
       
-      if (transactionsResponse.data) {
-        setTransactions(transactionsResponse.data.items);
+      if (response.status === 200 && response.data) {
+        setTransactions(response.data.items);
       }
-    };
-    
-
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  };
 
   useEffect(() => {
-    fetchAccounts();
-    fetchData();
-  }, [user]);
+    if (user?.id) {
+      fetchAccounts();
+      fetchTransactions();
+    }
+  }, [user?.id]);
 
   const handleLoadMore = () => {
     if (accountsData.hasMore) {
@@ -114,20 +126,18 @@ const Accounts: React.FC = () => {
         return AlertCircle;
     }
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: user?.currency || 'USD',
+      currency: user?.preferences?.currency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const getTotalBalance = () => {
-    return formatCurrency(
-      accountsData.items.reduce((sum, account) => sum + account.balance, 0)
-    );
+    const totalBalance = accountsData.items.reduce((sum, account) => sum + account.balance, 0);
+    return formatCurrency(totalBalance);
   };
 
   if (loading) {
@@ -135,7 +145,7 @@ const Accounts: React.FC = () => {
   }
 
   if (error) {
-    return <ErrorState message="Failed to load accounts" onRetry={() => fetchAccounts(1)} />;
+    return <ErrorState message="Failed to load accounts" onRetry={() => fetchAccounts()} />;
   }
 
   return (
@@ -173,10 +183,6 @@ const Accounts: React.FC = () => {
               <span className="text-sm opacity-75">
                 Across {accountsData.total} account{accountsData.total !== 1 ? "s" : ""}
               </span>
-              <span className="inline-block w-1 h-1 rounded-full bg-white/30" />
-                <span className="text-sm opacity-75">
-                Updated {new Date().toLocaleString()}
-                </span>
             </div>
           </div>
         </motion.div>
@@ -197,7 +203,7 @@ const Accounts: React.FC = () => {
                 account={account}
                 icon={getAccountTypeIcon(account.accountType)}
                 onUpdate={() => fetchAccounts(1)}
-                transactions={transactions.filter(t => t.account.id === account.id)}
+                transactions={transactions.filter(t => t.accountId === account.id)}
               />
             ))}
           </div>
@@ -228,7 +234,7 @@ const Accounts: React.FC = () => {
       <AddAccountModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAccountAdded={() => fetchAccounts(1)}
+        onAccountAdded={() => fetchAccounts()}
       />
     </div>
   );

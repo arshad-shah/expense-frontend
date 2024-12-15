@@ -1,40 +1,61 @@
-import { useEffect, useState, useCallback } from "react";
-import type { Budget, BudgetFilters, BudgetPerformance, Transaction, ApiResponse, PaginatedResponse, CategoryPerformance } from "@/types";
+import React, { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { getBudgets } from "@/services/BudgetService";
 import { getTransactions } from "@/services/TransactionService";
-import { useAuth } from "@/contexts/AuthContext";
-import { BudgetFilters as BudgetFiltersComponent } from "./Components/BudgetFilters";
+import type { 
+  Budget,
+  BudgetFilters,
+  Transaction,
+  BudgetStatus,
+} from "@/types";
+import PageLoader from "@/components/PageLoader";
+import ErrorState from "@/components/ErrorState";
+import BudgetHeader from "./Components/BudgetHeader";
+import {BudgetFilters as Filters} from "./Components/BudgetFilters";
+import EmptyState from "@/components/EmptyState";
 import { BudgetCard } from "./Components/BudgetCard";
 import AddBudgetModal from "./Components/AddBudgetModal";
-import EmptyState from "@/components/EmptyState";
-import ErrorState from "@/components/ErrorState";
-import PageLoader from "@/components/PageLoader";
-import BudgetHeader from "./Components/BudgetHeader";
-import { Button } from "@/components/Button";
+
+// Types specific to this component
+interface CategoryPerformance {
+  id: string;
+  name: string;
+  allocated: number;
+  spent: number;
+  percentageUsed: number;
+}
+
+interface BudgetPerformance {
+  budgetId: string;
+  budgetName: string;
+  allocated: number;
+  spent: number;
+  remaining: number;
+  percentageUsed: number;
+  status: BudgetStatus;
+  categoryPerformance: Record<string, CategoryPerformance>;
+}
 
 const Budgets: React.FC = () => {
-  // State Management
   const { user } = useAuth();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [performance, setPerformance] = useState<BudgetPerformance[]>([]);
   const [filters, setFilters] = useState<BudgetFilters>({
     period: "MONTHLY",
-    isActive: true,
+    isActive: true
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const userId = user?.id;
-
-  // Calculate budget performance based on transactions
   const calculateBudgetPerformance = useCallback((
     budget: Budget,
     transactions: Transaction[]
   ): BudgetPerformance => {
+    // Filter transactions that belong to the budget's categories
     const relevantTransactions = transactions.filter(t =>
-      budget.categories?.some(cat => cat.category.id === t.category.id)
+      Object.values(budget.categories).some(c => c.categoryId === t.categoryId)
     );
 
     const spent = relevantTransactions.reduce(
@@ -46,21 +67,30 @@ const Budgets: React.FC = () => {
     const allocated = budget.amount;
     const remaining = allocated - spent;
     const percentageUsed = (spent / allocated) * 100;
-    const categoryPerformance = budget.categories?.reduce((acc, cat) => {
-      const id = cat.category.id;
-      const categoryTransactions = relevantTransactions.filter(t => t.category.id === id);
-      const spentAmount = categoryTransactions.reduce((total, transaction) => total + transaction.amount, 0);
-      cat.spentAmount = spentAmount;
-      acc[id] = {
-        id,
-        name: cat.category.name,
-        allocated: cat.allocatedAmount,
-        spent: cat.spentAmount,
-        percentageUsed: (cat.spentAmount / cat.allocatedAmount) * 100,
+
+    // Calculate performance for each category
+    const categoryPerformance = Object.entries(budget.categories).reduce((acc, [categoryId, allocation]) => {
+      const categoryTransactions = relevantTransactions.filter(t => t.categoryId === categoryId);
+      const categorySpent = categoryTransactions.reduce((total, t) => total + t.amount, 0);
+      
+      acc[categoryId] = {
+        id: categoryId,
+        name: allocation.categoryId, // You might want to fetch category names separately
+        allocated: allocation.amount,
+        spent: categorySpent,
+        percentageUsed: (categorySpent / allocation.amount) * 100
       };
 
       return acc;
-    }, {} as Record<string, CategoryPerformance>) || {};
+    }, {} as Record<string, CategoryPerformance>);
+
+    // Determine budget status
+    let status: BudgetStatus = "ON_TRACK";
+    if (spent > allocated) {
+      status = "EXCEEDED";
+    } else if (percentageUsed > 80) {
+      status = "WARNING";
+    }
 
     return {
       budgetId: budget.id,
@@ -69,36 +99,30 @@ const Budgets: React.FC = () => {
       spent,
       remaining,
       percentageUsed,
-      status:
-        spent > allocated
-          ? "EXCEEDED"
-          : percentageUsed > 80
-          ? "WARNING"
-          : "ON_TRACK",
-      categoryPerformance,
+      status,
+      categoryPerformance
     };
   }, []);
 
-  // Fetch budgets and calculate performance
   const fetchBudgetsAndPerformance = useCallback(async () => {
-    if (!userId) return;
+    if (!user?.id) return;
 
     try {
       setLoading(true);
       setError(null);
 
       // Fetch budgets
-      const fetchedBudgets = await getBudgets(userId, filters);
+      const budgetsResponse = await getBudgets(user.id, filters);
       
-      if (!fetchedBudgets || !Array.isArray(fetchedBudgets)) {
-        throw new Error('Failed to fetch budgets');
+      if (!budgetsResponse.data || budgetsResponse.error) {
+        throw new Error(budgetsResponse.error || 'Failed to fetch budgets');
       }
+
+      const fetchedBudgets = budgetsResponse.data;
 
       // Get all unique category IDs from budgets
       const categoryIds = [...new Set(
-        fetchedBudgets.flatMap(budget =>
-          budget.categories?.map(cat => cat.category.id) || []
-        )
+        fetchedBudgets.flatMap(budget => Object.values(budget.categories).map(c => c.categoryId))
       )];
 
       if (categoryIds.length === 0) {
@@ -107,23 +131,21 @@ const Budgets: React.FC = () => {
         return;
       }
 
-      // Fetch transactions
-      const transactionsResponse: ApiResponse<PaginatedResponse<Transaction>> = 
-        await getTransactions({
-          dateRange: filters.dateRange,
-          categoryIds,
-        }, 1, 1000); // Adjust limit based on your needs
+      // Fetch transactions for the categories
+      const transactionsResponse = await getTransactions(user.id, {
+        categoryIds,
+        dateRange: filters.dateRange,
+        types: ["EXPENSE"]
+      });
+      
 
-        
-      if (!transactionsResponse.data) {
-        throw new Error('Failed to fetch transactions');
+      if (!transactionsResponse.data || transactionsResponse.error) {
+        throw new Error(transactionsResponse.error || 'Failed to fetch transactions');
       }
-
-      const transactions = transactionsResponse.data.items;
 
       // Calculate performance for each budget
       const calculatedPerformance = fetchedBudgets.map(budget =>
-        calculateBudgetPerformance(budget, transactions)
+        calculateBudgetPerformance(budget, transactionsResponse.data?.items || [])
       );
 
       setBudgets(fetchedBudgets);
@@ -138,14 +160,12 @@ const Budgets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [userId, filters, calculateBudgetPerformance]);
+  }, [user?.id, filters, calculateBudgetPerformance]);
 
-  // Effect to fetch data when filters or userId changes
   useEffect(() => {
     fetchBudgetsAndPerformance();
   }, [fetchBudgetsAndPerformance]);
 
-  // Modal handlers
   const handleOpenAddModal = () => setIsAddModalOpen(true);
   const handleCloseAddModal = () => setIsAddModalOpen(false);
   const handleOpenFilter = () => setIsFilterOpen(true);
@@ -157,7 +177,7 @@ const Budgets: React.FC = () => {
 
   if (error) {
     return (
-      <ErrorState 
+      <ErrorState
         message={error}
         onRetry={fetchBudgetsAndPerformance}
         title="Failed to load budgets"
@@ -168,21 +188,18 @@ const Budgets: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <BudgetHeader
         onOpenFilter={handleOpenFilter}
         onAddBudget={handleOpenAddModal}
       />
 
-      {/* Filters */}
-      <BudgetFiltersComponent
+      <Filters
         filters={filters}
         onApplyFilters={setFilters}
         isOpen={isFilterOpen}
         onClose={handleCloseFilter}
       />
 
-      {/* Budgets Grid */}
       {budgets.length === 0 ? (
         <EmptyState
           heading="No Budgets Found"
@@ -209,7 +226,6 @@ const Budgets: React.FC = () => {
         </div>
       )}
 
-      {/* Add Budget Modal */}
       <AddBudgetModal
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}

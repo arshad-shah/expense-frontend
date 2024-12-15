@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { MoreVertical, Edit2, Trash2, ExternalLink, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import type { Account, ApiResponse, Transaction } from "@/types";
+import type { Account, Transaction } from "@/types";
 import EditAccountModal from "./EditAccountModal";
 import { deleteAccount } from "@/services/AccountService";
 import { Button } from "@/components/Button";
@@ -8,8 +8,9 @@ import { Dropdown, DropdownItemType } from "@/components/Dropdown";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import Alert from "@/components/Alert";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, parseTimestamp } from "@/lib/utils";
 import AccountDetailsModal from "@/pages/Accounts/components/AccountDetails";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AccountCardProps {
   account: Account;
@@ -64,6 +65,7 @@ const getAccountTypeStyles = (type: string): {
 };
 
 const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate, transactions }) => {
+  const { user } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -74,8 +76,10 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
   const styles = getAccountTypeStyles(account.accountType);
 
   const handleDelete = async () => {
+    if (!user?.id) return;
+    
     try {
-      const response: ApiResponse<void> = await deleteAccount(account.id);
+      const response = await deleteAccount(user.id, account.id);
       
       if (response.status === 200) {
         onUpdate();
@@ -117,14 +121,10 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
       variant: "danger",
     }
   ];
-
-  const lastSyncDate = new Date(account.lastSync.seconds * 1000 + account.lastSync.nanoseconds / 1000000);
-  const formattedBalance = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: account.currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(account.balance);
+// Usage in your component
+const lastSyncDate = account.stats?.lastSync 
+  ? parseTimestamp(account.stats.lastSync)
+  : new Date();
 
   // Calculate the monthly change from transactions
   const calculateMonthlyChange = (): { isPositive: boolean; percentage: number } => {
@@ -267,7 +267,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-3xl font-bold text-gray-900 tracking-tight">
-                  {formattedBalance}
+                  {formatCurrency(account.balance, account.currency)}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <div className={cn(
@@ -285,7 +285,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
                 </div>
               </div>
 
-              {/* Mini Chart - Replace with actual chart in production */}
+              {/* Mini Chart */}
               <div className="w-24 h-12 flex items-end">
                 <div className="relative w-full h-full">
                   <TrendingUp 
@@ -304,12 +304,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
               <p className="text-sm text-gray-500 flex items-center gap-1.5">
                 <span>Last updated:</span>
                 <span className="font-medium text-gray-900">
-                  {lastSyncDate.toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatDate(lastSyncDate.toISOString())}
                 </span>
               </p>
             </div>

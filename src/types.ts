@@ -1,205 +1,259 @@
-// src/types/account.ts
-
 import { FieldValue } from "firebase/firestore";
 
+// ==================
+// Enums & Constants
+// ==================
+export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
+export type AccountType =
+  | "CHECKING"
+  | "SAVINGS"
+  | "CREDIT_CARD"
+  | "CASH"
+  | "INVESTMENT";
+export type CategoryType = "INCOME" | "EXPENSE";
+export type BudgetPeriod = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+export type Currency = "USD" | "EUR" | "GBP" | "JPY" | "CAD" | "AUD" | "CNY";
+export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
+export type WeekDay = "sunday" | "monday";
+export type BudgetStatus = "ON_TRACK" | "WARNING" | "EXCEEDED";
 
-// src/types/user.ts
-export interface User {
+// ==================
+// Base Interfaces
+// ==================
+interface BaseModel {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  
-  // Core Financial Settings
-  currency: Currency;
-  dateFormat: DateFormat;
-  budgetStartDay: number; // Day of month budget cycle starts
-  weekStartDay: WeekDay; // Which day weeks start on for weekly views
-  
-  // Stats
-  lastActive?: string;
-  signupDate: string;
-  totalTransactions: number;
-  totalAccounts: number;
-  
-  // Relationships
-  accounts?: Account[];
-  transactions?: Transaction[];
-  categories?: Category[];
-  budgets?: Budget[];
+  createdAt: FieldValue | string;
+  updatedAt?: FieldValue | string;
+  isActive: boolean;
+  deletedAt?: FieldValue | string;
 }
-
+// ==================
+// User Types
+// ==================
 export interface UserStats {
   totalAccounts: number;
   totalTransactions: number;
   totalCategories: number;
   totalBudgets: number;
+  lastActive: string;
+  signupDate: string;
   monthlySpending: number;
   monthlyIncome: number;
   savingsRate: number;
-  topCategories: Array<{
-    category: string;
-    amount: number;
-  }>;
-  trends: {
-    income: { value: number; direction: 'up' | 'down' };
-    spending: { value: number; direction: 'up' | 'down' };
-    savings: { value: number; direction: 'up' | 'down' };
-  };
+  lastCalculated: FieldValue | string;
 }
 
-export interface UserInput {
-  email: string;
-  firstName: string;
-  lastName: string;
+export interface UserPreferences {
   currency: Currency;
   dateFormat: DateFormat;
   budgetStartDay: number;
   weekStartDay: WeekDay;
 }
 
-export type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
+export interface User extends BaseModel {
+  email: string;
+  firstName: string;
+  lastName: string;
+  preferences: UserPreferences;
+  
+  stats: UserStats;
+}
 
-export type WeekDay = 'sunday' | 'monday';
+export type UserInput = Omit<User, keyof BaseModel | "stats">;
 
+// For direct Firestore timestamp objects
+  // Type definition
+export type FirestoreTimestamp = {
+  seconds: number;
+  nanoseconds: number;
+} | {
+  _seconds: number;
+  _nanoseconds: number;
+} | string | FieldValue;
+// ==================
+// Account Types
+// ==================
+export interface AccountStats {
+  availableCredit?: number;
+  pendingTransactions: number;
+  dailyBalances: Record<string, number>;
+  monthlyTransactionCount: Record<string, number>;
+  lastSync: FirestoreTimestamp;
+}
 
-export interface Account {
-
-  id: string;
-
+export interface Account extends BaseModel {
   userId: string;
-
   name: string;
-
-  accountType: string;
-
+  accountType: AccountType;
   bankName: string;
-
+  currency: Currency;
   balance: number;
-
-  currency: string;
-
-  isActive: boolean;
-
-  createdAt: FieldValue | string;
-
-  lastSync: {
-    seconds: number;
-    nanoseconds: number;
+  stats: AccountStats;
+  metadata: {
+    accountNumber?: string;
+    routingNumber?: string;
+    institution?: string;
+    lastFour?: string;
+    color?: string;
+    icon?: string;
   };
 }
 
-export interface AccountWithBalance extends Account {
-  balance: number;
-  transactionCount: number;
+export type AccountInput = Omit<Account, keyof BaseModel | "stats">;
+
+// ==================
+// Transaction Types
+// ==================
+export interface TransactionMetadata {
+  location?: string;
+  notes?: string;
+  tags?: string[];
+  merchantName?: string;
+  merchantCategory?: string;
 }
 
-export interface AccountInput {
-  userId: string;
-  name: string;
-  accountType: string;
-  bankName: string;
-  balance: number;
-  currency: string;
-}
-// src/types/transaction.ts
-export interface Transaction {
-  id: string;
-  account: Account;
-  category: Category;
-  amount: number;
-  type: string;
-  description: string;
-  transactionDate: string;
-  isRecurring: boolean;
-  recurringPattern?: string;
-  attachments?: Attachment[];
-}
-
-export interface TransactionInput {
+export interface Transaction extends BaseModel {
   userId: string;
   accountId: string;
   categoryId: string;
   amount: number;
-  type: string;
+  type: TransactionType;
   description: string;
   transactionDate: string;
-  isRecurring?: boolean;
+  isRecurring: boolean;
   recurringPattern?: string;
+  metadata: TransactionMetadata;
+  // Denormalized fields for quick access
+  categoryName: string;
+  accountName: string;
 }
 
-// src/types/category.ts
-export interface Category {
-  id: string;
+export type TransactionInput = Omit<Transaction, keyof BaseModel>;
+
+// ==================
+// Category Types
+// ==================
+export interface CategoryBudget {
+  amount: number;
+  period: BudgetPeriod;
+  spent: number;
+  remaining: number;
+  status: BudgetStatus;
+}
+
+export interface CategoryStats {
+  monthlySpending: Record<string, number>;
+  monthlyBudgetCompliance: Record<string, number>;
+  trend: {
+    direction: "up" | "down" | "stable";
+    percentage: number;
+  };
+  lastCalculated: FieldValue | string;
+}
+
+export interface Category extends BaseModel {
+  userId: string;
   name: string;
-  type: string;
+  type: CategoryType;
   icon: string;
   color: string;
   isDefault: boolean;
-  isActive: boolean;
-  transactions?: Transaction[];
+  parentId?: string;
 }
 
-export interface CategoryInput {
+export type CategoryInput = Omit<Category, keyof BaseModel | "stats">;
+
+// ==================
+// Budget Types
+// ==================
+export interface BudgetCategoryAllocation {
+  categoryId: string;
+  amount: number;
+  spent: number;
+  remaining: number;
+  status: BudgetStatus;
+}
+
+export interface BudgetStats {
+  totalAllocated: number;
+  totalSpent: number;
+  totalRemaining: number;
+  complianceRate: number;
+  historicalPerformance: Record<
+    string,
+    {
+      allocated: number;
+      spent: number;
+      compliance: number;
+    }
+  >;
+}
+
+export interface CategoryAllocation {
+  categoryId: string;
+  amount: number;
+}
+
+export interface Budget extends BaseModel {
   userId: string;
   name: string;
-  type: string;
-  icon: string;
-  color: string;
-  isDefault?: boolean;
-}
-
-// src/types/budget.ts
-export interface Budget {
-  id: string;
-  name: string;
-  amount: number;
-  period: string;
+  period: BudgetPeriod;
   startDate: string;
   endDate: string;
-  isActive: boolean;
-  categories?: BudgetCategory[];
-}
-
-export interface BudgetCategory {
-  budget: Budget;
-  category: Category;
-  allocatedAmount: number;
-  spentAmount: number;
-}
-
-export interface BudgetInput {
-  userId: string;
-  name: string;
   amount: number;
-  period: string;
+  categories: Record<string, BudgetCategoryAllocation>;
+  categoryAllocations: CategoryAllocation[];
+  stats: BudgetStats;
+  rollover: boolean;
+}
+export type BudgetInput = Omit<
+  Budget,
+  keyof BaseModel | "stats" | "categories"
+>;
+
+// ==================
+// Filter & Query Types
+// ==================
+export interface DateRange {
   startDate: string;
   endDate: string;
 }
 
-// src/types/attachment.ts
-export interface Attachment {
-  id: string;
-  transaction: Transaction;
-  fileName: string;
-  fileType: string;
-  fileUrl: string;
-  fileSize: number;
-  uploadedAt: string;
+export interface PaginationParams {
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }
 
-// src/types/common.ts
-export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
-export type AccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'CASH' | 'INVESTMENT';
-export type CategoryType = 'INCOME' | 'EXPENSE';
-export type BudgetPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'CNY';
+export interface TransactionFilters {
+  dateRange?: DateRange;
+  categoryIds?: string[];
+  accountIds?: string[];
+  types?: TransactionType[];
+  minAmount?: number;
+  maxAmount?: number;
+  searchTerm?: string;
+  isRecurring?: boolean;
+  tags?: string[];
+}
 
-// src/types/responses.ts
+export interface BudgetFilters {
+  period?: BudgetPeriod;
+  isActive?: boolean;
+  dateRange?: DateRange;
+  categoryIds?: string[];
+  status?: BudgetStatus;
+}
+
+// ==================
+// Response Types
+// ==================
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
   status: number;
+  message?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -212,76 +266,60 @@ export interface PaginatedResponse<T> {
 
 export interface ErrorResponse {
   message: string;
-  code?: string;
+  code: string;
   field?: string;
+  details?: Record<string, unknown>;
 }
 
-// src/types/filters.ts
-export interface DateRange {
-  startDate: string;
-  endDate: string;
-}
-
-export interface TransactionFilters {
-  dateRange?: DateRange;
-  categoryIds?: string[];
-  accountIds?: string[];
-  types?: TransactionType[];
-  minAmount?: number;
-  maxAmount?: number;
-  searchTerm?: string;
-  isRecurring?: boolean;
-}
-
-export interface BudgetFilters {
-  period?: BudgetPeriod;
-  isActive?: boolean;
-  dateRange?: DateRange;
-  categoryIds?: string[];
-}
-
-// src/types/analytics.ts
+// ==================
+// Analytics Types
+// ==================
 export interface SpendingByCategory {
   categoryId: string;
   categoryName: string;
   amount: number;
   percentage: number;
-  trend: number;
+  trend: {
+    value: number;
+    direction: "up" | "down" | "stable";
+  };
 }
 
-export interface MonthlySpending {
+export interface MonthlyAnalytics {
   month: string;
-  amount: number;
-  budgetAmount?: number;
-  variance?: number;
-}
-export interface CategoryPerformance {
-  allocated: number;
-  spent: number;
-  name: string;
-  id: string;
-  percentageUsed: number;
+  income: number;
+  expenses: number;
+  savings: number;
+  budgetCompliance: number;
+  topCategories: SpendingByCategory[];
 }
 
-export interface BudgetPerformance {
-  budgetId: string;
-  budgetName: string;
-  allocated: number;
-  spent: number;
-  remaining: number;
-  percentageUsed: number;
-  status: 'ON_TRACK' | 'WARNING' | 'EXCEEDED';
-  categoryPerformance: Record<string, CategoryPerformance>;
-}
-
-
-export interface TransactionResponse {
-  accountId: string;
-  amount: number;
-  categoryId: string;
-  createdAt: string;
+export interface FinancialInsight {
+  type: "SPENDING_PATTERN" | "BUDGET_ALERT" | "SAVING_OPPORTUNITY";
+  title: string;
   description: string;
-  transactionDate: string;
-  type: string;
-  userId: string;
+  impact: "HIGH" | "MEDIUM" | "LOW";
+  category?: string;
+  amount?: number;
+  recommendations: string[];
 }
+
+// ==================
+// Collection Paths
+// ==================
+export const CollectionPaths = {
+  users: "users",
+  accounts: (userId: string) => `users/${userId}/accounts`,
+  transactions: (userId: string, accountId: string) =>
+    `users/${userId}/accounts/${accountId}/transactions`,
+  categories: (userId: string) => `users/${userId}/categories`,
+  budgets: (userId: string) => `users/${userId}/budgets`,
+  stats: {
+    account: (userId: string, accountId: string) =>
+      `users/${userId}/accounts/${accountId}/stats`,
+    category: (userId: string, categoryId: string) =>
+      `users/${userId}/categories/${categoryId}/stats`,
+    budget: (userId: string, budgetId: string) =>
+      `users/${userId}/budgets/${budgetId}/stats`,
+  },
+} as const;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,12 +15,13 @@ import { Dialog } from '@/components/Dialog';
 import { Dropdown, DropdownItemType } from '@/components/Dropdown';
 import EditBudgetModal from './EditBudgetModel';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
-import { deleteBudget } from '@/services/BudgetService';
-import { Budget } from '@/types';
+import { deactivateBudget } from '@/services/BudgetService';
+import {getCategoriesByIds} from '@/services/userService';
+import { Budget, Category } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/lib/utils';
+import { ProgressBar } from '@/components/Progressbar';
 
-type Status = 'EXCEEDED' | 'WARNING' | 'ON_TRACK';
-type BadgeVariant = 'danger' | 'warning' | 'success';
 interface BudgetPerformance {
   status: Status;
   spent: number;
@@ -28,13 +29,18 @@ interface BudgetPerformance {
   percentageUsed: number;
 }
 
+type Status = 'EXCEEDED' | 'WARNING' | 'ON_TRACK';
+type BadgeVariant = 'danger' | 'warning' | 'success';
+
 interface StatusConfig {
   variant: BadgeVariant;
   icon: React.ElementType;
   className: string;
   progressColor: string;
+  bgGradient: string;
   alertIcon: React.ElementType;
   message: string;
+  ringColor: string;
 }
 
 interface BudgetCardProps {
@@ -47,26 +53,32 @@ const STATUS_CONFIG: Record<Status, StatusConfig> = {
   EXCEEDED: {
     variant: 'danger',
     icon: TrendingUp,
-    className: 'text-red-600 bg-red-50',
-    progressColor: 'bg-red-500',
+    className: 'text-red-600 bg-gradient-to-br from-red-50 to-red-100',
+    progressColor: 'bg-gradient-to-r from-red-500 to-red-600',
+    bgGradient: 'bg-gradient-to-br from-red-50 to-red-100',
     alertIcon: AlertTriangle,
-    message: 'Budget exceeded'
+    message: 'Budget exceeded',
+    ringColor: 'ring-red-500'
   },
   WARNING: {
     variant: 'warning',
     icon: AlertCircle,
-    className: 'text-amber-600 bg-amber-50',
-    progressColor: 'bg-amber-500',
+    className: 'text-amber-600 bg-gradient-to-br from-amber-50 to-amber-100',
+    progressColor: 'bg-gradient-to-r from-amber-500 to-amber-600',
+    bgGradient: 'bg-gradient-to-br from-amber-50 to-amber-100',
     alertIcon: AlertCircle,
-    message: 'Approaching limit'
+    message: 'Approaching limit',
+    ringColor: 'ring-amber-500'
   },
   ON_TRACK: {
     variant: 'success',
     icon: TrendingDown,
-    className: 'text-emerald-600 bg-emerald-50',
-    progressColor: 'bg-emerald-500',
+    className: 'text-emerald-600 bg-gradient-to-br from-emerald-50 to-emerald-100',
+    progressColor: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
+    bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100',
     alertIcon: CheckCircle,
-    message: 'On track'
+    message: 'On track',
+    ringColor: 'ring-emerald-500'
   }
 };
 
@@ -136,19 +148,11 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const statusConfig = STATUS_CONFIG[performance.status];
   const StatusIcon = statusConfig.icon;
   const AlertIcon = statusConfig.alertIcon;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const formatDate = (date: string): string => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -158,14 +162,38 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
     });
   };
 
-  const getCategoryStatus = (spent: number, allocated: number): BadgeVariant => {
-    const percentage = (spent / allocated) * 100;
-    return percentage > 100 ? 'danger' : percentage > 80 ? 'warning' : 'success';
+  // get the categories for the ids
+  const getCategoriesForIds = async (categoryIds: string[]): Promise<Category[]> => {
+    try {
+      if (user?.id) {
+        const categories = await getCategoriesByIds(user.id, categoryIds);
+        if(categories.data){
+          return categories.data;
+        }
+      } else {
+        console.error('User ID is undefined');
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+    return [];
   };
+
+  // useeffect to get the categories for the budget
+  useEffect(() => {
+    const categoryIds = Object.values(budget.categories).map((category) => category.categoryId);
+    getCategoriesForIds(categoryIds).then((categories) => {
+      setCategories(categories);
+    });
+  }, [budget.categories]);
 
   const handleDelete = async (): Promise<void> => {
     try {
-      await deleteBudget(budget.id);
+      if (user?.id) {
+        await deactivateBudget(user.id, budget.id);
+      } else {
+        console.error('User ID is undefined');
+      }
       onUpdate();
     } catch (error) {
       console.error('Error deleting budget:', error);
@@ -190,104 +218,124 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm hover:shadow transition-shadow duration-200 border border-gray-200">
-        {/* Compact Header */}
-        <div className="p-3 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-md ${statusConfig.className}`}>
-                <StatusIcon className="h-4 w-4" />
+       <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden">
+        {/* Enhanced Header */}
+        <div className="relative">
+          <div className={`p-4 ${statusConfig.bgGradient}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`flex items-center justify-center w-12 h-12 rounded-lg shadow-md ${statusConfig.className} ring-2 ${statusConfig.ringColor}`}>
+                  <StatusIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{budget.name}</h3>
+                  <p className="text-sm font-medium text-gray-600">
+                    {formatCurrency(budget.amount, user?.preferences.currency || "USD")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900">{budget.name}</h3>
-                <p className="text-sm text-gray-500">{formatCurrency(budget.amount)}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant={statusConfig.variant} className="text-xs">
-                {performance.status.replace('_', ' ')}
-              </Badge>
-              <div className="relative">
-              <Button
-                variant="ghost"
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="hover:bg-gray-50"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-
-              
-              <Dropdown
-                show={showDropdown}
-                onClose={() => setShowDropdown(false)}
-                items={dropdownItems}
-              />
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size='icon'
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="hover:bg-white/20 rounded-lg"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                  <Dropdown
+                    show={showDropdown}
+                    onClose={() => setShowDropdown(false)}
+                    items={dropdownItems}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Compact Stats */}
-        <div className="p-3 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="p-2 rounded-md bg-gray-50">
-              <p className="text-xs text-gray-500">Spent</p>
-              <p className="font-medium text-gray-900">{formatCurrency(performance.spent)}</p>
+        {/* Enhanced Stats Section */}
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm">
+              <p className="text-sm text-gray-600 mb-1">Spent</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {formatCurrency(performance.spent, user?.preferences.currency || "USD")}
+              </p>
             </div>
-            <div className="p-2 rounded-md bg-gray-50">
-              <p className="text-xs text-gray-500">Left</p>
-              <p className="font-medium text-gray-900">{formatCurrency(performance.remaining)}</p>
+            <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm">
+              <p className="text-sm text-gray-600 mb-1">Remaining</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {formatCurrency(performance.remaining, user?.preferences.currency || "USD")}
+              </p>
             </div>
-            <div className="p-2 rounded-md bg-gray-50">
-              <p className="text-xs text-gray-500">Used</p>
-              <p className="font-medium text-gray-900">{performance.percentageUsed.toFixed(0)}%</p>
+            <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm">
+              <p className="text-sm text-gray-600 mb-1">Progress</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {performance.percentageUsed.toFixed(0)}%
+              </p>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
+          {/* Enhanced Progress Bar */}
+          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
+            {/* <div
               className={`h-full ${statusConfig.progressColor} transition-all duration-300`}
               style={{ width: `${Math.min(performance.percentageUsed, 100)}%` }}
-            />
+            /> */}
+            <ProgressBar value={performance.percentageUsed} variant={statusConfig.variant} />
           </div>
 
-          {/* Categories */}
-          {budget.categories && budget.categories.length > 0 && (
-            <div className="space-y-2">
-              {budget.categories.slice(0, 2).map((categoryAllocation) => {
-                const percentage = (categoryAllocation.spentAmount / categoryAllocation.allocatedAmount) * 100;
+          {/* Enhanced Categories Section */}
+          {budget.categories && Object.entries(budget.categories).length > 0 && (
+            <div className="space-y-3 mt-4">
+              {Object.entries(budget.categories).slice(0, 2).map(([categoryName, category]) => {
+                const percentage = (category.spent / category.amount) * 100;
+                const categoryIcon = categories.find((c) => c.id === category.categoryId)?.icon || 'more-horizontal';
+                
                 return (
                   <div
-                    key={categoryAllocation.category.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-gray-50"
+                    key={category.categoryId}
+                    className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white text-lg">
-                        {getEmoji(categoryAllocation.category.icon)}
+                    <div className="flex items-center space-x-3">
+                      <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm text-xl">
+                        {getEmoji(categoryIcon)}
                       </span>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {categoryAllocation.category.name}
+                          {categoryName}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {formatCurrency(categoryAllocation.spentAmount)} / {formatCurrency(categoryAllocation.allocatedAmount)}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm text-gray-600">
+                            {formatCurrency(category.spent, user?.preferences.currency || "USD")}
+                          </p>
+                          <span className="text-gray-400">/</span>
+                          <p className="text-sm text-gray-600">
+                            {formatCurrency(category.amount, user?.preferences.currency || "USD")}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-gray-600">
+                    <Badge 
+                      variant={percentage > 100 ? 'danger' : percentage > 80 ? 'warning' : 'success'}
+                      className="text-sm"
+                    >
                       {percentage.toFixed(0)}%
-                    </span>
+                    </Badge>
                   </div>
                 );
               })}
-              {budget.categories.length > 2 && (
-                <button
-                  className="w-full text-xs text-gray-500 hover:text-gray-700 py-1"
+              
+              {Object.entries(budget.categories).length > 2 && (
+                <Button
+                  variant="outline"
+                  fullWidth
                   onClick={() => setIsDetailsOpen(true)}
                 >
-                  View all {budget.categories.length} categories
-                </button>
+                  View all {Object.entries(budget.categories).length} categories
+                </Button>
               )}
             </div>
           )}
@@ -314,31 +362,33 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
             </div>
 
             <div className="space-y-2">
-              {budget.categories?.map((categoryAllocation) => {
-                const percentage = (categoryAllocation.spentAmount / categoryAllocation.allocatedAmount) * 100;
-                const status = getCategoryStatus(categoryAllocation.spentAmount, categoryAllocation.allocatedAmount);
+              {Object.entries(budget.categories)?.map((categoryAllocation) => {
+                const category = categoryAllocation[1];
+                const categoryName = categoryAllocation[0];
+                const percentage = (category.spent / category.amount) * 100;
+                const status = category.status;
                 
                 return (
-                  <div key={categoryAllocation.category.id} className="p-3 rounded-lg bg-gray-50">
+                  <div key={category.categoryId} className="p-3 rounded-lg bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-3">
                         <span className="flex items-center justify-center w-8 h-8 rounded-md bg-white text-xl">
-                          {getEmoji(categoryAllocation.category.icon)}
+                          {getEmoji(categories.find((c) => c.id === category.categoryId)?.icon || 'more-horizontal')}
                         </span>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {categoryAllocation.category.name}
+                            {categoryName}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {formatCurrency(categoryAllocation.spentAmount)} of {formatCurrency(categoryAllocation.allocatedAmount)}
+                            {formatCurrency(category.spent, user?.preferences.currency || "USD")} of {formatCurrency(category.amount, user?.preferences.currency || "USD")}
                           </p>
                         </div>
                       </div>
-                      <Badge variant={status}>{percentage.toFixed(0)}%</Badge>
+                      <Badge variant={STATUS_CONFIG[status as Status].variant}>{percentage.toFixed(0)}%</Badge>
                     </div>
                     <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${STATUS_CONFIG[status === 'danger' ? 'EXCEEDED' : status === 'warning' ? 'WARNING' : 'ON_TRACK'].progressColor} transition-all duration-300`}
+                        className={`h-full ${STATUS_CONFIG[status === 'EXCEEDED' ? 'EXCEEDED' : status === 'WARNING' ? 'WARNING' : 'ON_TRACK'].progressColor} transition-all duration-300`}
                         style={{ width: `${Math.min(percentage, 100)}%` }}
                       />
                     </div>

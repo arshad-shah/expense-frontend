@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, CreditCard, Wallet, PiggyBank, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAccountsWithBalance } from '@/services/AccountService';
+import { getAccounts } from '@/services/AccountService';
 import { getTransactions } from '@/services/TransactionService';
-import type { Transaction, AccountWithBalance } from '@/types';
+import type { Transaction } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface StatData {
@@ -15,7 +15,7 @@ interface StatData {
   savingsChange: number;
 }
 
-const StatCards: React.FC = () => {
+const StatCards = () => {
   const [stats, setStats] = useState<StatData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,13 +28,13 @@ const StatCards: React.FC = () => {
       try {
         setLoading(true);
         
-        // Get all accounts with their balances
-        const accountsResponse = await getAccountsWithBalance(user.id);
-        if (!accountsResponse.data || accountsResponse.error) {
+        // Get all accounts
+        const accountsResponse = await getAccounts(user.id);
+        if (accountsResponse.status !== 200 || !accountsResponse.data) {
           throw new Error(accountsResponse.error || 'Failed to fetch accounts');
         }
         
-        const totalBalance = accountsResponse.data.reduce(
+        const totalBalance = accountsResponse.data.items.reduce(
           (sum, account) => sum + account.balance, 
           0
         );
@@ -48,18 +48,18 @@ const StatCards: React.FC = () => {
 
         // Get transactions for both months
         const [currentMonthResponse, previousMonthResponse] = await Promise.all([
-          getTransactions({
+          getTransactions(user.id, {
             dateRange: {
               startDate: currentMonthStart.toISOString(),
               endDate: currentMonthEnd.toISOString()
             }
-          }),
-          getTransactions({
+          }, 1, 1000),
+          getTransactions(user.id, {
             dateRange: {
               startDate: previousMonthStart.toISOString(),
               endDate: previousMonthEnd.toISOString()
             }
-          })
+          }, 1, 1000)
         ]);
 
         if (!currentMonthResponse.data || !previousMonthResponse.data) {
@@ -86,10 +86,12 @@ const StatCards: React.FC = () => {
         const previousNetFlow = previousMonthData.income - previousMonthData.spending;
         const balanceChange = calculatePercentageChange(previousNetFlow, currentNetFlow);
 
+        const monthlySavings = currentMonthData.income - currentMonthData.spending;
+
         setStats({
           totalBalance,
           monthlySpending: currentMonthData.spending,
-          monthlySavings: currentMonthData.income - currentMonthData.spending,
+          monthlySavings:monthlySavings > 0 ? monthlySavings : 0,
           balanceChange,
           spendingChange,
           savingsChange
@@ -130,7 +132,7 @@ const StatCards: React.FC = () => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: user?.currency || 'USD',
+      currency: user?.preferences.currency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

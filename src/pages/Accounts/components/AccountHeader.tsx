@@ -17,7 +17,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
       {/* Background Accent */}
       <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white to-gray-50 rounded-xl" />
 
-      <div className="relative px-6 py-4 sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+      <div className="relative sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         {/* Title Section */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -33,7 +33,6 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
             </h1>
           </div>
           <p className="mt-1 text-sm text-gray-500 hidden sm:flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
             Manage your financial accounts
           </p>
         </motion.div>

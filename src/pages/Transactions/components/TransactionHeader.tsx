@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, Download, Plus, Wallet, ArrowRightLeft } from 'lucide-react';
+import { Filter, Download, Plus, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { motion } from 'framer-motion';
 
@@ -37,8 +37,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
             </h1>
           </div>
           <p className="mt-1 text-sm text-gray-500 hidden sm:flex items-center gap-2">
-            <Wallet className="w-4 h-4" />
-            Manage your income and expenses with ease
+            Manage your income and expenses
           </p>
         </motion.div>
         

@@ -5,20 +5,16 @@ import {
   CreditCard, 
   Building2, 
   CalendarClock, 
-  Wallet2, 
   ArrowUpRight, 
   ArrowDownRight,
-  ArrowRight,
   Activity,
   TrendingUp,
   BadgeDollarSign,
-  Clock,
-  CreditCard as CardIcon,
   BarChart3,
-  PiggyBank
 } from 'lucide-react';
 import type { Account, Transaction } from '@/types';
 import { motion } from 'framer-motion';
+import { formatDate, parseTimestamp } from '@/lib/utils';
 
 interface AccountDetailsModalProps {
   isOpen: boolean;
@@ -92,7 +88,7 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
   };
 
   const stats = calculateStatistics();
-  const lastSyncDate = new Date(account.lastSync.seconds * 1000 + account.lastSync.nanoseconds / 1000000);
+  const lastSyncDate = parseTimestamp(account.stats.lastSync);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -278,12 +274,7 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                   <div>
                     <p className="text-sm font-medium text-gray-900">Last Updated</p>
                     <p className="text-sm text-gray-500">
-                      {lastSyncDate.toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatDate(lastSyncDate.toISOString())}
                     </p>
                   </div>
                 </div>

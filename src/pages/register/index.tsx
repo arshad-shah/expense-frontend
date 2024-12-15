@@ -98,7 +98,12 @@ const Register = () => {
         email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        currency: formData.currency,
+        preferences: {
+          currency: formData.currency,
+          dateFormat: 'MM/DD/YYYY',
+          budgetStartDay: 1,
+          weekStartDay: 'monday'
+        }
       }, formData.password);
       navigate("/");
     } catch (err) {
