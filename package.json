@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "type-check": "tsc --noEmit",
     "prepare": "husky",
-    "test": "vitest",
+    "test": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch"
