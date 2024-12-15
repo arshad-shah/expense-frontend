@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Mail,
   Lock,
@@ -9,62 +9,71 @@ import {
   AlertCircle,
   ArrowLeft,
   DollarSign,
-  Layout
-} from 'lucide-react';
-import { Currency } from '@/types';
-import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
-import { motion, AnimatePresence } from 'framer-motion';
+  Layout,
+} from "lucide-react";
+import { Currency } from "@/types";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/Select';
-import { cn } from '@/lib/utils';
+} from "@/components/Select";
+import { cn } from "@/lib/utils";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-    currency: 'USD' as Currency,
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    currency: "USD" as Currency,
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
-  
+
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const currencies = [
-    { value: 'USD', label: 'US Dollar (USD)' },
-    { value: 'EUR', label: 'Euro (EUR)' },
-    { value: 'GBP', label: 'British Pound (GBP)' },
-    { value: 'JPY', label: 'Japanese Yen (JPY)' },
-    { value: 'CAD', label: 'Canadian Dollar (CAD)' },
-    { value: 'AUD', label: 'Australian Dollar (AUD)' },
-    { value: 'CNY', label: 'Chinese Yuan (CNY)' },
+    { value: "USD", label: "US Dollar (USD)" },
+    { value: "EUR", label: "Euro (EUR)" },
+    { value: "GBP", label: "British Pound (GBP)" },
+    { value: "JPY", label: "Japanese Yen (JPY)" },
+    { value: "CAD", label: "Canadian Dollar (CAD)" },
+    { value: "AUD", label: "Australian Dollar (AUD)" },
+    { value: "CNY", label: "Chinese Yuan (CNY)" },
   ];
 
   const passwordRequirements = [
-    { label: "At least one uppercase letter", validator: (p: string) => /[A-Z]/.test(p) },
-    { label: "At least one lowercase letter", validator: (p: string) => /[a-z]/.test(p) },
+    {
+      label: "At least one uppercase letter",
+      validator: (p: string) => /[A-Z]/.test(p),
+    },
+    {
+      label: "At least one lowercase letter",
+      validator: (p: string) => /[a-z]/.test(p),
+    },
     { label: "At least one number", validator: (p: string) => /[0-9]/.test(p) },
-    { label: "At least one special character", validator: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
-    { label: "Minimum 8 characters", validator: (p: string) => p.length >= 8 }
+    {
+      label: "At least one special character",
+      validator: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p),
+    },
+    { label: "Minimum 8 characters", validator: (p: string) => p.length >= 8 },
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCurrencyChange = (value: string) => {
-    setFormData(prev => ({ ...prev, currency: value as Currency }));
+    setFormData((prev) => ({ ...prev, currency: value as Currency }));
   };
 
   const validateForm = () => {
@@ -76,7 +85,9 @@ const Register = () => {
       setError("Please enter both first and last names");
       return false;
     }
-    if (!passwordRequirements.every(req => req.validator(formData.password))) {
+    if (
+      !passwordRequirements.every((req) => req.validator(formData.password))
+    ) {
       setError("Password does not meet all requirements");
       return false;
     }
@@ -94,19 +105,22 @@ const Register = () => {
     try {
       setError("");
       setLoading(true);
-      await register({
-        email: formData.email,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        preferences: {
-          currency: formData.currency,
-          dateFormat: 'MM/DD/YYYY',
-          budgetStartDay: 1,
-          weekStartDay: 'monday'
-        }
-      }, formData.password);
+      await register(
+        {
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          preferences: {
+            currency: formData.currency,
+            dateFormat: "MM/DD/YYYY",
+            budgetStartDay: 1,
+            weekStartDay: "monday",
+          },
+        },
+        formData.password,
+      );
       navigate("/");
-    } catch (err) {
+    } catch (err: unknown) {
       setError((err as Error).message || "Failed to create account");
     } finally {
       setLoading(false);
@@ -115,12 +129,14 @@ const Register = () => {
 
   const handleGoogleRegister = async () => {
     try {
-      setError('');
+      setError("");
       setLoading(true);
       await loginWithGoogle();
-      navigate('/');
+      navigate("/");
     } catch (err) {
-      setError('Failed to register with Google');
+      const error =
+        err instanceof Error ? err.message : "Failed to register with Google";
+      setError(error);
     } finally {
       setLoading(false);
     }
@@ -148,13 +164,13 @@ const Register = () => {
                 </span>
               </motion.div>
             </div>
-            
+
             <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Create Account
             </h2>
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link 
+              Already have an account?{" "}
+              <Link
                 to="/login"
                 className="inline-flex items-center font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
               >
@@ -193,7 +209,7 @@ const Register = () => {
                 className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<User className="h-5 w-5 text-gray-400" />}
               />
-              
+
               <Input
                 label="Last Name"
                 id="lastName"
@@ -226,7 +242,10 @@ const Register = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Preferred Currency
               </label>
-              <Select value={formData.currency} onValueChange={handleCurrencyChange}>
+              <Select
+                value={formData.currency}
+                onValueChange={handleCurrencyChange}
+              >
                 <SelectTrigger className="h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
                   <div className="flex items-center">
                     <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
@@ -258,12 +277,12 @@ const Register = () => {
                 className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
-              
+
               <AnimatePresence>
                 {passwordFocus && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     className="rounded-xl border border-gray-200 bg-gray-50/50 backdrop-blur-sm p-4"
                   >
@@ -276,26 +295,50 @@ const Register = () => {
                           <motion.div
                             initial={false}
                             animate={{
-                              scale: req.validator(formData.password) ? [1.2, 1] : 1
+                              scale: req.validator(formData.password)
+                                ? [1.2, 1]
+                                : 1,
                             }}
                             transition={{ duration: 0.2 }}
                           >
                             {req.validator(formData.password) ? (
-                              <svg className="mr-2 h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              <svg
+                                className="mr-2 h-4 w-4 text-green-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
                             ) : (
-                              <svg className="mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <svg
+                                className="mr-2 h-4 w-4 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
                               </svg>
                             )}
                           </motion.div>
-                          <span className={cn(
-                            "transition-colors duration-200",
-                            req.validator(formData.password)
-                              ? 'text-green-700'
-                              : 'text-gray-600'
-                          )}>
+                          <span
+                            className={cn(
+                              "transition-colors duration-200",
+                              req.validator(formData.password)
+                                ? "text-green-700"
+                                : "text-gray-600",
+                            )}
+                          >
                             {req.label}
                           </span>
                         </li>
@@ -319,10 +362,7 @@ const Register = () => {
               />
             </div>
 
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
+            <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
               <Button
                 type="submit"
                 disabled={loading}
@@ -331,7 +371,7 @@ const Register = () => {
                 className="w-full h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200"
               >
                 <UserPlus className="mr-2 h-5 w-5" />
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
             </motion.div>
           </form>
@@ -341,14 +381,13 @@ const Register = () => {
               <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">Or continue with</span>
+              <span className="bg-white px-4 text-gray-500">
+                Or continue with
+              </span>
             </div>
           </div>
 
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-          >
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
             <Button
               onClick={handleGoogleRegister}
               disabled={loading}
@@ -379,12 +418,18 @@ const Register = () => {
           </motion.div>
 
           <p className="text-center text-xs text-gray-600">
-            By creating an account, you agree to our{' '}
-            <Link to="/terms" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            By creating an account, you agree to our{" "}
+            <Link
+              to="/terms"
+              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
               Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link to="/privacy" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="/privacy"
+              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
               Privacy Policy
             </Link>
           </p>

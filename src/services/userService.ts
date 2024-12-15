@@ -8,6 +8,7 @@ import {
   writeBatch,
   collection,
   getDocs,
+  FieldValue,
 } from "firebase/firestore";
 import { createDefaultCategories } from "./categoryDefaults";
 import { db } from "../config/firebase";
@@ -38,7 +39,7 @@ const DEFAULT_USER_STATS: UserStats = {
  * Creates a new user document in Firestore
  */
 export const createUser = async (
-  userInput: UserInput & { id: string }
+  userInput: UserInput & { id: string },
 ): Promise<User> => {
   try {
     // Start a batch write
@@ -120,7 +121,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
  */
 export const updateUserProfile = async (
   userId: string,
-  updates: Partial<UserInput>
+  updates: Partial<UserInput>,
 ): Promise<ApiResponse<User>> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -164,7 +165,7 @@ export const updateUserProfile = async (
  */
 export const updateUserPreferences = async (
   userId: string,
-  preferences: Partial<UserPreferences>
+  preferences: Partial<UserPreferences>,
 ): Promise<ApiResponse<UserPreferences>> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -211,7 +212,7 @@ export const updateUserPreferences = async (
  */
 export const updateUserStats = async (
   userId: string,
-  statsUpdate: Partial<UserStats>
+  statsUpdate: Partial<UserStats>,
 ): Promise<ApiResponse<UserStats>> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -224,7 +225,7 @@ export const updateUserStats = async (
       };
     }
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, FieldValue | number | string> = {
       updatedAt: serverTimestamp(),
       "stats.lastCalculated": serverTimestamp(),
     };
@@ -235,7 +236,7 @@ export const updateUserStats = async (
     }
     if (typeof statsUpdate.totalTransactions === "number") {
       updates["stats.totalTransactions"] = increment(
-        statsUpdate.totalTransactions
+        statsUpdate.totalTransactions,
       );
     }
     if (typeof statsUpdate.totalCategories === "number") {
@@ -284,7 +285,7 @@ export const updateUserStats = async (
  * Deactivates a user account (soft delete)
  */
 export const deactivateUser = async (
-  userId: string
+  userId: string,
 ): Promise<ApiResponse<void>> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -320,7 +321,7 @@ export const deactivateUser = async (
  * Reactivates a previously deactivated user account
  */
 export const reactivateUser = async (
-  userId: string
+  userId: string,
 ): Promise<ApiResponse<User>> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -368,7 +369,9 @@ export const getCategories = async (
   userId: string,
 ): Promise<ApiResponse<Category[]>> => {
   try {
-    const docSnap = await getDocs(collection(db, CollectionPaths.categories(userId)));
+    const docSnap = await getDocs(
+      collection(db, CollectionPaths.categories(userId)),
+    );
     const categories: Category[] = [];
     docSnap.forEach((doc) => {
       const categoryData = doc.data() as Category;
@@ -383,17 +386,16 @@ export const getCategories = async (
     return {
       status: 200,
       data: categories,
-      message: `Retrieved ${categories.length} categories successfully`
+      message: `Retrieved ${categories.length} categories successfully`,
     };
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    console.error("Error fetching categories:", error);
     return {
       status: 500,
-      error: 'Failed to fetch categories'
+      error: "Failed to fetch categories",
     };
   }
 };
-
 
 // get categories for given ids
 /**
@@ -404,13 +406,17 @@ export const getCategories = async (
  */
 export const getCategoriesByIds = async (
   userId: string,
-  categoryIds: string[]
+  categoryIds: string[],
 ): Promise<ApiResponse<Category[]>> => {
   try {
     const categories: Category[] = [];
 
     for (const categoryId of categoryIds) {
-      const categoryRef = doc(db, CollectionPaths.categories(userId), categoryId);
+      const categoryRef = doc(
+        db,
+        CollectionPaths.categories(userId),
+        categoryId,
+      );
       const categorySnap = await getDoc(categoryRef);
 
       if (categorySnap.exists()) {
@@ -428,13 +434,13 @@ export const getCategoriesByIds = async (
     return {
       status: 200,
       data: categories,
-      message: `Retrieved ${categories.length} categories successfully`
+      message: `Retrieved ${categories.length} categories successfully`,
     };
   } catch (error) {
-    console.error('Error fetching categories by IDs:', error);
+    console.error("Error fetching categories by IDs:", error);
     return {
       status: 500,
-      error: 'Failed to fetch categories by IDs'
+      error: "Failed to fetch categories by IDs",
     };
   }
 };
