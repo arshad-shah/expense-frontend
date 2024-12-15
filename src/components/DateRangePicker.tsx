@@ -31,7 +31,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const handleStartDateChange = (date: Date | null) => {
     if (date) {
-
       onChange({
         ...dateRange,
         startDate: date.toISOString(),
@@ -47,6 +46,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       });
     }
   };
+
+  type CustomHeaderProps = {
+    date: Date;
+    decreaseMonth: () => void;
+    increaseMonth: () => void;
+    prevMonthButtonDisabled: boolean;
+    nextMonthButtonDisabled: boolean;
+  };
   // Custom header component
   const CustomHeader = ({
     date,
@@ -54,7 +61,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     increaseMonth,
     prevMonthButtonDisabled,
     nextMonthButtonDisabled,
-  }: any) => (
+  }: CustomHeaderProps) => (
     <div className="flex items-center justify-between px-4 py-3">
       <motion.button
         whileHover={{ scale: 1.1 }}
@@ -65,11 +72,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       >
         <ChevronLeft className="h-5 w-5 text-gray-600" />
       </motion.button>
-      
+
       <h2 className="text-sm font-semibold text-gray-900">
-        {date.toLocaleString('default', { month: 'long', year: 'numeric' })}
+        {date.toLocaleString("default", { month: "long", year: "numeric" })}
       </h2>
-      
+
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
@@ -101,19 +108,21 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           transition-all duration-200 ease-out
         `}
       >
-        <motion.span 
+        <motion.span
           className="text-violet-500 mr-3"
           whileHover={{ rotate: 15 }}
         >
           <CalendarDays className="h-5 w-5" />
         </motion.span>
-        <span className="flex-1 text-sm font-medium text-gray-700">{value}</span>
+        <span className="flex-1 text-sm font-medium text-gray-700">
+          {value}
+        </span>
       </motion.div>
-    )
+    ),
   );
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-3"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -155,14 +164,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               setIsEndOpen(false);
             }}
             onCalendarClose={() => setIsStartOpen(false)}
-            dayClassName={date =>
+            dayClassName={(date) =>
               `text-sm font-medium hover:bg-violet-50 rounded-lg transition-all mx-0.5 w-9 h-9 flex items-center justify-center
-              ${date.toISOString().split('T')[0] === dateRange.startDate.split('T')[0]
-                ? 'bg-violet-100 text-violet-900'
-                : 'text-gray-900'}`
+              ${
+                date.toISOString().split("T")[0] ===
+                dateRange.startDate.split("T")[0]
+                  ? "bg-violet-100 text-violet-900"
+                  : "text-gray-900"
+              }`
             }
-          >
-          </DatePicker>
+          ></DatePicker>
         </div>
 
         <div className="space-y-2">
@@ -185,15 +196,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               setIsStartOpen(false);
             }}
             onCalendarClose={() => setIsEndOpen(false)}
-            dayClassName={date =>
+            dayClassName={(date) =>
               `text-sm font-medium hover:bg-violet-50 rounded-lg transition-all mx-0.5 w-9 h-9 flex items-center justify-center
-              ${date.toISOString().split('T')[0] === dateRange.endDate.split('T')[0]
-                ? 'bg-violet-100 text-violet-900'
-                : 'text-gray-700'}`
+              ${
+                date.toISOString().split("T")[0] ===
+                dateRange.endDate.split("T")[0]
+                  ? "bg-violet-100 text-violet-900"
+                  : "text-gray-700"
+              }`
             }
             minDate={new Date(dateRange.startDate)}
-          >
-          </DatePicker>
+          ></DatePicker>
         </div>
       </div>
 
@@ -229,7 +242,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <span className="font-medium">{error}</span>
               </motion.p>
             ) : (
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="text-sm text-gray-500"

@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
-
 export default defineConfig(({ mode }) => {
   const commonConfig = {
     plugins: [react()],
@@ -30,7 +29,6 @@ export default defineConfig(({ mode }) => {
       exclude: ["node_modules", "dist"],
     },
   };
-
   if (mode === "development") {
     return {
       ...commonConfig,
