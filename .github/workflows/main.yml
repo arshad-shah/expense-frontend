@@ -27,7 +27,13 @@ jobs:
       uses: pnpm/action-setup@v4.0.0
 
     - name: Install dependencies
-      run: HUSKY=0 pnpm install
+      run: CI=true HUSKY=0 pnpm install --frozen-lockfile
+
+    - name: Lint
+      run: CI=true pnpm lint
+
+    - name: Test
+      run: CI=true pnpm test
 
     - name: Build
       env:
