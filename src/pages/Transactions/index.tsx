@@ -169,17 +169,6 @@ const Transactions: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Currency Formatter
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences?.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }, [user?.preferences?.currency]);
-
-
   // Modal Handlers
   const handleOpenModal = (modal: keyof typeof modals) => {
     setModals(prev => ({ ...prev, [modal]: true }));
