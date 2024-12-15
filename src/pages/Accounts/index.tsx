@@ -149,7 +149,7 @@ const Accounts: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-2">
       <AccountHeader onAddAccount={() => setIsAddModalOpen(true)} />
 
       {/* Total Balance Card */}

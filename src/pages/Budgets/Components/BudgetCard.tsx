@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -19,7 +19,7 @@ import { deactivateBudget } from '@/services/BudgetService';
 import {getCategoriesByIds} from '@/services/userService';
 import { Budget, Category } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { ProgressBar } from '@/components/Progressbar';
 
 interface BudgetPerformance {
@@ -150,18 +150,18 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
   const [showDropdown, setShowDropdown] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
+  const actionButtonRefs = useRef<{ [key: string]: React.RefObject<HTMLButtonElement> }>({});
+  
+    // Initialize refs for action buttons
+    React.useEffect(() => {
+        if (!actionButtonRefs.current[budget.id]) {
+          actionButtonRefs.current[budget.id] = React.createRef();
+        }
+    }, [budget]);
+
   const statusConfig = STATUS_CONFIG[performance.status];
   const StatusIcon = statusConfig.icon;
   const AlertIcon = statusConfig.alertIcon;
-
-  const formatDate = (date: string): string => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   // get the categories for the ids
   const getCategoriesForIds = async (categoryIds: string[]): Promise<Category[]> => {
     try {
@@ -239,6 +239,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
                   <Button
                     variant="ghost"
                     size='icon'
+                    ref={actionButtonRefs.current[budget.id]}
                     onClick={() => setShowDropdown(!showDropdown)}
                     className="hover:bg-white/20 rounded-lg"
                   >
@@ -246,6 +247,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
                   </Button>
                   <Dropdown
                     show={showDropdown}
+                    alignTo={actionButtonRefs.current[budget.id]?.current}
                     onClose={() => setShowDropdown(false)}
                     items={dropdownItems}
                   />
@@ -352,7 +354,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">{budget.name}</h2>
                 <p className="text-sm text-gray-500">
-                  {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
+                  {formatDate(budget.startDate, {shortFormat:true})} - {formatDate(budget.endDate, {shortFormat:true})}
                 </p>
               </div>
               <Badge variant={statusConfig.variant} className="text-sm">
@@ -367,7 +369,6 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
                 const categoryName = categoryAllocation[0];
                 const percentage = (category.spent / category.amount) * 100;
                 const status = category.status;
-                
                 return (
                   <div key={category.categoryId} className="p-3 rounded-lg bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
@@ -387,10 +388,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, performance, onU
                       <Badge variant={STATUS_CONFIG[status as Status].variant}>{percentage.toFixed(0)}%</Badge>
                     </div>
                     <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${STATUS_CONFIG[status === 'EXCEEDED' ? 'EXCEEDED' : status === 'WARNING' ? 'WARNING' : 'ON_TRACK'].progressColor} transition-all duration-300`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      />
+                      <ProgressBar value={percentage} variant={status === 'EXCEEDED' ? 'danger' : status === 'WARNING' ? 'warning' : 'success'} />
                     </div>
                   </div>
                 );

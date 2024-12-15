@@ -10,69 +10,237 @@ import {
   User, 
   LogOut,
   Menu,
-  X 
+  X,
+  LucideIcon 
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import AppLogo from '../assets/vite.webp';
 
-
-const MobileMenuToggle: React.FC<{ isOpen: boolean; onClick: () => void }> = ({ isOpen, onClick }) => (
-  <motion.div whileTap={{ scale: 0.95 }}>
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={onClick}
-      className="h-9 w-9 p-0 inline-flex items-center justify-center rounded-xl hover:bg-indigo-50"
-    >
-      <AnimatePresence>
-        {isOpen ? (
-          <X className="h-5 w-5 text-indigo-600" />
-        ) : (
-          <Menu className="h-5 w-5 text-indigo-600" />
-        )}
-      </AnimatePresence>
-    </Button>
-  </motion.div>
-);
-
+// Types
 interface NavItem {
   path: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   label: string;
 }
 
+interface NavLinkProps {
+  to: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+  isMobile?: boolean;
+  onClick?: () => void;
+}
+
+interface MobileMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLogout: () => Promise<void>;
+}
+
+// Constants
+const NAV_ITEMS: NavItem[] = [
+  { path: '/', icon: Home, label: 'Dashboard' },
+  { path: '/accounts', icon: CreditCard, label: 'Accounts' },
+  { path: '/transactions', icon: DollarSign, label: 'Transactions' },
+  { path: '/budgets', icon: PieChart, label: 'Budgets' },
+];
+
+// NavLink Component
+const NavLink: React.FC<NavLinkProps> = ({ 
+  to, 
+  icon: Icon, 
+  children, 
+  isMobile = false,
+  onClick 
+}) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={cn("w-full", !isMobile && "w-auto")}
+    >
+      <Link
+        to={to}
+        onClick={onClick}
+        className={cn(
+          "inline-flex items-center w-full px-4 py-3 font-medium rounded-xl transition-all duration-200",
+          isActive
+            ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200/50" 
+            : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50",
+          isMobile ? "text-lg" : "text-sm lg:text-base",
+          "group"
+        )}
+      >
+        <Icon className={cn(
+          "transition-transform group-hover:scale-110 duration-200",
+          isMobile ? "h-5 w-5 mr-3" : "h-4 w-4 lg:h-5 lg:w-5 mr-2.5"
+        )} />
+        {children}
+      </Link>
+    </motion.div>
+  );
+};
+
+// Logo Component
+const Logo: React.FC = () => (
+  <motion.div
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    className="flex-shrink-0"
+  >
+    <Link to="/" className="flex items-center">
+      <img 
+        src={AppLogo} 
+        alt="ExpenseTracker" 
+        className="h-8 w-auto lg:h-10 lg:w-auto"
+      />
+      <span className="ml-2.5 text-lg lg:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        ExpenseTracker
+      </span>
+    </Link>
+  </motion.div>
+);
+
+// Mobile Menu Component
+const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onLogout }) => {
+  // Animation variants
+  const containerVariants = {
+    closed: { opacity: 0 },
+    open: { 
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    closed: { opacity: 0, x: -20 },
+    open: { opacity: 1, x: 0 }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial="closed"
+          animate="open"
+          exit="closed"
+          variants={containerVariants}
+          className="fixed inset-0 z-40 lg:hidden bg-white/95 backdrop-blur-md"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
+            <Logo />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="rounded-xl"
+            >
+              <X className="h-5 w-5 text-gray-600" />
+            </Button>
+          </div>
+
+          {/* Navigation Items */}
+          <motion.div className="h-[calc(100vh-4rem)] px-4 py-6 overflow-y-auto">
+            <div className="space-y-3">
+              {NAV_ITEMS.map((item) => (
+                <motion.div
+                  key={item.path}
+                  variants={itemVariants}
+                >
+                  <NavLink
+                    to={item.path}
+                    icon={item.icon}
+                    isMobile
+                    onClick={onClose}
+                  >
+                    {item.label}
+                  </NavLink>
+                </motion.div>
+              ))}
+
+              <motion.div variants={itemVariants}>
+                <NavLink
+                  to="/profile"
+                  icon={User}
+                  isMobile
+                  onClick={onClose}
+                >
+                  Profile
+                </NavLink>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="pt-3">
+                <Button
+                  onClick={onLogout}
+                  variant="danger"
+                  className="w-full justify-center text-lg py-3 h-auto rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
+                >
+                  <LogOut className="h-5 w-5 mr-2.5" />
+                  Logout
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// Nav Container Props
+interface NavContainerProps {
+  isScrolled: boolean;
+  children: React.ReactNode;
+}
+
+// Nav Container Component
+const NavContainer: React.FC<NavContainerProps> = ({ isScrolled, children }) => (
+  <motion.nav
+    initial={false}
+    animate={{
+      backgroundColor: isScrolled ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 1)",
+      backdropFilter: isScrolled ? "blur(8px)" : "none",
+      boxShadow: isScrolled 
+        ? "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
+        : "none"
+    }}
+    className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100"
+  >
+    {children}
+  </motion.nav>
+);
+
+// Main Navigation Component
 const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
-  // Close mobile menu when resizing to desktop
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false);
-      }
+    const handleScroll = (): void => {
+      setIsScrolled(window.scrollY > 10);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Prevent scrolling when mobile menu is open
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isMobileMenuOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isMobileMenuOpen]);
 
   if (!user) return null;
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     try {
       await logout();
       setIsMobileMenuOpen(false);
@@ -81,180 +249,64 @@ const Navigation: React.FC = () => {
     }
   };
 
-  const navItems: NavItem[] = [
-    { path: '/', icon: Home, label: 'Dashboard' },
-    { path: '/accounts', icon: CreditCard, label: 'Accounts' },
-    { path: '/transactions', icon: DollarSign, label: 'Transactions' },
-    { path: '/budgets', icon: PieChart, label: 'Budgets' },
-  ];
-
-  const isActivePath = (path: string) => location.pathname === path;
-
-  const NavLink: React.FC<{ item: NavItem; isMobile?: boolean }> = ({ item, isMobile = false }) => (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className="w-full sm:w-auto"
-    >
-      <Link
-        to={item.path}
-        onClick={() => isMobile && setIsMobileMenuOpen(false)}
-        className={cn(
-          "inline-flex items-center w-full px-3 sm:px-4 py-2.5 font-medium rounded-xl transition-all duration-200",
-          isActivePath(item.path)
-            ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200" 
-            : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50",
-          isMobile ? "text-base" : "text-sm lg:text-base"
-        )}
-      >
-        <item.icon className={cn(
-          "mr-2.5",
-          isMobile ? "h-5 w-5" : "h-4 w-4 lg:h-5 lg:w-5"
-        )} />
-        {item.label}
-      </Link>
-    </motion.div>
-  );
-
-  const menuVariants = {
-    closed: {
-      opacity: 0,
-      height: 0,
-      transition: {
-        duration: 0.2,
-        ease: "easeInOut"
-      }
-    },
-    open: {
-      opacity: 1,
-      height: "100vh",
-      transition: {
-        duration: 0.2,
-        ease: "easeInOut",
-        staggerChildren: 0.07,
-        delayChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    closed: { x: -16, opacity: 0 },
-    open: { x: 0, opacity: 1 }
-  };
-
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
+      <NavContainer isScrolled={isScrolled}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Left section */}
             <div className="flex items-center flex-1">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-shrink-0"
-              >
-                <Link to="/" className="flex items-center">
-                  <Layout className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-600" />
-                  <span className="ml-2 text-base sm:text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    ExpenseTracker
-                  </span>
-                </Link>
-              </motion.div>
-
-              <div className="hidden md:flex md:items-center md:ml-6 lg:ml-8 md:space-x-2 lg:space-x-3">
-                {navItems.map((item) => (
-                  <NavLink key={item.path} item={item} />
+              <Logo />
+              
+              {/* Desktop Navigation */}
+              <div className="hidden lg:flex lg:items-center lg:ml-10 lg:space-x-2">
+                {NAV_ITEMS.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    icon={item.icon}
+                  >
+                    {item.label}
+                  </NavLink>
                 ))}
               </div>
             </div>
 
-            <div className="hidden md:flex md:items-center md:space-x-2 lg:space-x-3">
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link
-                  to="/profile"
-                  className={cn(
-                    "inline-flex items-center px-3 lg:px-4 py-2.5 text-sm lg:text-base font-medium rounded-xl transition-all duration-200",
-                    isActivePath('/profile')
-                      ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200"
-                      : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
-                  )}
-                >
-                  <User className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
-                  Profile
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-sm lg:text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
-                >
-                  <LogOut className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
-                  Logout
-                </Button>
-              </motion.div>
+            {/* Desktop Right section */}
+            <div className="hidden lg:flex lg:items-center lg:space-x-3">
+              <NavLink to="/profile" icon={User}>Profile</NavLink>
+              <Button
+                onClick={handleLogout}
+                variant="danger"
+                className="px-4 py-3 h-auto text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200 group"
+              >
+                <LogOut className="h-5 w-5 mr-2.5 transition-transform group-hover:scale-110" />
+                Logout
+              </Button>
             </div>
 
-            <div className="flex items-center md:hidden">
-             <MobileMenuToggle isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-            </div>
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden rounded-xl"
+            >
+              <Menu className="h-5 w-5 text-gray-600" />
+            </Button>
           </div>
         </div>
+      </NavContainer>
 
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial="closed"
-              animate="open"
-              exit="closed"
-              variants={menuVariants}
-              className="fixed inset-0 z-40 md:hidden bg-white/95 backdrop-blur-sm pt-14"
-            >
-              <div className="flex  items-center justify-end px-3 sm:px-4 py-2.5 border-b border-gray-100">
-                 <MobileMenuToggle isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-              </div>
-              <motion.div 
-                className="h-full px-3 py-4 space-y-2 overflow-y-auto"
-                variants={menuVariants}
-              >
-                {navItems.map((item) => (
-                  <motion.div key={item.path} variants={itemVariants}>
-                    <NavLink item={item} isMobile />
-                  </motion.div>
-                ))}
-                <motion.div variants={itemVariants}>
-                  <Link
-                    to="/profile"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "inline-flex w-full items-center px-3 sm:px-4 py-2.5 text-base font-medium rounded-xl transition-all duration-200",
-                      isActivePath('/profile')
-                        ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200"
-                        : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
-                    )}
-                  >
-                    <User className="h-5 w-5 mr-2.5" />
-                    Profile
-                  </Link>
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <Button
-                    variant="danger"
-                    onClick={handleLogout}
-                    className="w-full justify-start text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
-                  >
-                    <LogOut className="h-5 w-5 mr-2.5" />
-                    Logout
-                  </Button>
-                </motion.div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
-      {/* Spacer for fixed navbar */}
-      <div className="h-14 sm:h-16" />
+      {/* Mobile Menu */}
+      <MobileMenu 
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        onLogout={handleLogout}
+      />
+
+      {/* Spacer */}
+      <div className="h-16" />
     </>
   );
 };

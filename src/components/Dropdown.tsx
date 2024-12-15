@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
@@ -20,6 +21,8 @@ interface DropdownProps {
   size?: 'sm' | 'md' | 'lg';
   width?: 'auto' | 'sm' | 'md' | 'lg';
   className?: string;
+  alignTo?: HTMLElement | null;
+  style?: React.CSSProperties;
 }
 
 export const Dropdown = ({
@@ -30,12 +33,63 @@ export const Dropdown = ({
   size = 'md',
   width = 'sm',
   className,
+  alignTo,
+  style,
 }: DropdownProps) => {
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const updatePosition = () => {
+      if (show && alignTo && dropdownRef.current) {
+        const rect = alignTo.getBoundingClientRect();
+        const dropdownRect = dropdownRef.current.getBoundingClientRect();
+        const scrollY = window.scrollY;
+        const scrollX = window.scrollX;
+
+        // Calculate initial position
+        let top = rect.bottom + scrollY;
+        let left = position === 'right' 
+          ? rect.right - dropdownRect.width + scrollX
+          : rect.left + scrollX;
+
+        // Check if dropdown would go off screen to the right
+        if (left + dropdownRect.width > window.innerWidth) {
+          left = window.innerWidth - dropdownRect.width - 16; // 16px margin
+        }
+
+        // Check if dropdown would go off screen to the left
+        if (left < 16) {
+          left = 16; // 16px margin
+        }
+
+        // Check if dropdown would go off screen at the bottom
+        if (top + dropdownRect.height > window.innerHeight + scrollY) {
+          top = rect.top - dropdownRect.height + scrollY;
+        }
+
+        setDropdownPosition({ top, left });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [show, alignTo, position]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        alignTo && 
+        !alignTo.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
@@ -59,7 +113,7 @@ export const Dropdown = ({
         document.removeEventListener('keydown', handleEscapeKey);
       };
     }
-  }, [show, onClose]);
+  }, [show, onClose, alignTo]);
 
   const sizes = {
     sm: {
@@ -117,7 +171,7 @@ export const Dropdown = ({
     },
   };
 
-  return (
+  const dropdownContent = (
     <AnimatePresence>
       {show && (
         <motion.div
@@ -130,12 +184,17 @@ export const Dropdown = ({
             ease: 'easeOut',
           }}
           className={cn(
-            'absolute z-50 mt-2 origin-top-right rounded-xl bg-white shadow-lg',
+            'fixed rounded-xl bg-white shadow-lg',
             'border border-gray-100',
-            position === 'left' ? 'left-0' : 'right-0',
             widths[width],
             className
           )}
+          style={{
+            ...style,
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            zIndex: 1000,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-1.5" role="menu">
@@ -203,4 +262,6 @@ export const Dropdown = ({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(dropdownContent, document.body);
 };

@@ -10,12 +10,13 @@ import type {
   TransactionFilters as FilterType, 
   Account, 
   PaginatedResponse,
+  Category,
 } from '@/types';
 import TransactionHeader from './components/TransactionHeader';
 import ErrorState from '@/components/ErrorState';
 import PageLoader from '@/components/PageLoader';
 import Alert from '@/components/Alert';
-import SummaryCards from '@/pages/Transactions/components/SummaryCards';
+import { getCategories } from '@/services/userService';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -52,6 +53,8 @@ const Transactions: React.FC = () => {
       endDate: new Date().toISOString()
     }
   });
+
+  const [categories, setCategories] = useState<(Category | undefined)[]>([]);
 
   // Data Fetching
   const fetchAccounts = useCallback(async () => {
@@ -96,6 +99,24 @@ const Transactions: React.FC = () => {
       if (!response.data) {
         throw new Error(response.error || 'Failed to fetch transactions');
       }
+
+      const categoriesOfTransactions = response.data.items.map(t => {
+        return {
+          categoryId: t.categoryId,
+          category: t.categoryName,
+        };
+      });
+
+      const allCategories = await getCategories(user.id);
+      if (allCategories.error || !allCategories.data) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      const categoriesForTransactions = categoriesOfTransactions.map(c => {
+        return allCategories.data && allCategories.data.find(cat => cat.id === c.categoryId);
+      });
+
+      setCategories(categoriesForTransactions);
 
       setTransactions(response.data);
     } catch (err) {
@@ -187,7 +208,7 @@ const Transactions: React.FC = () => {
   const hasAccounts = accounts.total > 0;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-2">
       {/* Account Warning */}
       {!hasAccounts && (
         <Alert 
@@ -212,17 +233,12 @@ const Transactions: React.FC = () => {
         disableAdd={!hasAccounts}
       />
 
-      {/* Summary Cards */}
-      <SummaryCards
-        currentTransactions={transactions.items}
-        formatCurrency={formatCurrency}
-      />
-
       {/* Transaction List */}
       <TransactionList
         transactions={transactions.items}
         onUpdate={fetchTransactions}
-        categories={[]}
+        categories={categories.filter((category): category is Category => category !== undefined)}
+        accounts={accounts.items}
       />
 
       {/* Modals */}

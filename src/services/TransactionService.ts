@@ -24,6 +24,7 @@ import type {
   ApiResponse,
   PaginatedResponse,
   Budget,
+  BudgetStatus,
 } from "../types";
 import { updateBudgetCategories } from "./BudgetService";
 
@@ -145,17 +146,30 @@ export const createTransaction = async (
       if (!categoryEntry) continue;
 
       const [categoryKey, categoryAllocation] = categoryEntry;
-      
 
       if (categoryAllocation) {
         const updatedCategories = { ...budget.categories };
+
+        const spent = categoryAllocation.spent + transactionInput.amount;
+
+
+        let status: BudgetStatus = "ON_TRACK";
+        // Status should be WARNING when the amount spent is greater than 80% of the allocated amount
+        if (spent > 0.8 * categoryAllocation.amount) {
+          status = "WARNING";
+        }
+
+        if(categoryAllocation.amount - spent < 0) {
+          status = "EXCEEDED";
+        }
+        
         updatedCategories[categoryKey] = {
           ...categoryAllocation,
-          spent: categoryAllocation.spent + transactionInput.amount,
-          remaining:
-            categoryAllocation.amount -
-            (categoryAllocation.spent + transactionInput.amount),
+          spent: spent,
+          remaining: categoryAllocation.amount - spent,
+          status: status,
         };
+        
         await updateBudgetCategories(userId, budgetDoc.id, updatedCategories);
       }
     }
@@ -413,12 +427,26 @@ export const deleteTransaction = async (
 
       if (categoryAllocation) {
         const updatedCategories = { ...budget.categories };
+
+        const spent = categoryAllocation.spent - transaction.amount;
+
+        // Calculate the status of the category after reversing the transaction
+        let status: BudgetStatus = "ON_TRACK";
+
+        if (categoryAllocation.amount - spent < 0) {
+          status = "EXCEEDED";
+        }
+        // Status should be WARNING when the amount spent is greater than 80% of the allocated amount
+        if (spent > 0.8 * categoryAllocation.amount) {
+          status = "WARNING";
+        }
         updatedCategories[categoryKey] = {
           ...categoryAllocation,
           spent: categoryAllocation.spent - transaction.amount,
           remaining:
-            categoryAllocation.amount -
-            (categoryAllocation.spent - transaction.amount),
+        categoryAllocation.amount -
+        (categoryAllocation.spent - transaction.amount),
+          status: status,
         };
         await updateBudgetCategories(userId, budgetDoc.id, updatedCategories);
       }
