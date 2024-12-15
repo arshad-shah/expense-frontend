@@ -10,6 +10,8 @@ import Profile from './pages/Profile';
 import Login from './pages/login';
 import Register from './pages/register';
 import { ReactNode } from 'react';
+import ForgotPassword from '@/pages/forgotPassword/ForgotPassword';
+import UserProvider from './contexts/UserContext';
 
 // Wrapper for authenticated pages with navigation and default layout
 const AuthenticatedLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
@@ -31,6 +33,7 @@ const PublicLayout: React.FC<{ children: ReactNode }> = ({ children }) => (
 function App() {
   return (
     <AuthProvider>
+      <UserProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
           <Routes>
@@ -52,23 +55,21 @@ function App() {
               } 
             />
 
-            {/* Protected routes */}
-            <Route
-              path="/"
+            <Route 
+              path="/forgot-password" 
               element={
-                <PrivateRoute>
-                  <AuthenticatedLayout>
-                    <Dashboard />
-                  </AuthenticatedLayout>
-                </PrivateRoute>
-              }
+                <PublicLayout>
+                  <ForgotPassword />
+                </PublicLayout>
+              } 
             />
+
             <Route
-              path="/accounts"
+              path="/budgets"
               element={
                 <PrivateRoute>
                   <AuthenticatedLayout>
-                    <Accounts />
+                    <Budgets />
                   </AuthenticatedLayout>
                 </PrivateRoute>
               }
@@ -84,11 +85,11 @@ function App() {
               }
             />
             <Route
-              path="/budgets"
+              path="/accounts"
               element={
                 <PrivateRoute>
                   <AuthenticatedLayout>
-                    <Budgets />
+                    <Accounts />
                   </AuthenticatedLayout>
                 </PrivateRoute>
               }
@@ -103,9 +104,20 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <AuthenticatedLayout>
+                    <Dashboard />
+                  </AuthenticatedLayout>
+                </PrivateRoute>
+              }
+            />
           </Routes>
         </div>
       </Router>
+      </UserProvider>
     </AuthProvider>
   );
 }

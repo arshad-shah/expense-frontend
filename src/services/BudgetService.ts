@@ -3,283 +3,460 @@ import {
   query,
   where,
   getDocs,
-  updateDoc,
-  doc as firestoreDoc,
+  doc,
   getDoc,
   writeBatch,
+  serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import type {
-  Budget,
-  BudgetInput,
-  BudgetCategory,
-  BudgetFilters,
-  User,
-  Category,
+import { getUser } from "./userService";
+import {
+  type Budget,
+  type BudgetInput,
+  type BudgetFilters,
+  type ApiResponse,
+  type BudgetStats,
+  type BudgetCategoryAllocation,
+  type DateRange,
+  type PaginatedResponse,
+  type User,
+  CollectionPaths,
 } from "../types";
 
+const DEFAULT_BUDGET_STATS: BudgetStats = {
+  totalAllocated: 0,
+  totalSpent: 0,
+  totalRemaining: 0,
+  complianceRate: 0,
+  historicalPerformance: {},
+};
+
+/**
+ * Validate user exists and is active
+ */
+const validateUser = async (userId: string): Promise<User> => {
+  const user = await getUser(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+  if (!user.isActive) {
+    throw new Error("User account is inactive");
+  }
+  return user;
+};
+
+/**
+ * Get all budgets for a user with optional filters
+ */
 export const getBudgets = async (
   userId: string,
   filters?: BudgetFilters
-): Promise<Budget[]> => {
-  let q = query(collection(db, "budgets"), where("userId", "==", userId));
+): Promise<ApiResponse<Budget[]>> => {
 
-  if (filters?.isActive !== undefined) {
-    q = query(q, where("isActive", "==", filters.isActive));
-  }
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
 
-  if (filters?.period) {
-    q = query(q, where("period", "==", filters.period));
-  }
+    let q = query(collection(db, `users/${userId}/budgets`));
 
-  if (filters?.dateRange) {
-    q = query(
-      q,
-      where("startDate", ">=", filters.dateRange.startDate),
-      where("endDate", "<=", filters.dateRange.endDate)
-    );
-  }
-
-  const querySnapshot = await getDocs(q);
-  const budgets: Budget[] = [];
-
-  for (const doc of querySnapshot.docs) {
-    const data = doc.data();
-
-    // Get user data
-    const userDoc = await getDoc(firestoreDoc(db, "users", data.userId));
-
-    // Get budget categories
-    const categoriesSnapshot = await getDocs(
-      query(
-        collection(db, "budgetCategories"),
-        where("budget.id", "==", doc.id)
-      )
-    );
-
-    const categories = await Promise.all(
-      categoriesSnapshot.docs.map(async (categoryDoc) => {
-        const categoryData = categoryDoc.data();
-        const categoryRef = await getDoc(
-          firestoreDoc(db, "categories", categoryData.category.id)
-        );
-
-        return {
-          category:{
-            id: categoryRef.id,
-            ...categoryRef.data()
-          },
-          allocatedAmount: categoryData.allocatedAmount,
-          spentAmount: categoryData.spentAmount || 0,
-        } as BudgetCategory;
-      })
-    );
-
-    budgets.push({
-      id: doc.id,
-      user: userDoc.data() as User,
-      name: data.name,
-      amount: data.amount,
-      period: data.period,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      isActive: data.isActive,
-      categories: categories,
-    } as Budget);
-  }
-
-  return budgets;
-};
-
-export const getBudgetById = async (
-  budgetId: string
-): Promise<Budget | null> => {
-  const budgetDoc = await getDoc(firestoreDoc(db, "budgets", budgetId));
-
-  if (!budgetDoc.exists()) {
-    return null;
-  }
-
-  const data = budgetDoc.data();
-
-  // Get user data
-  const userDoc = await getDoc(firestoreDoc(db, "users", data.userId));
-
-  // Get budget categories
-  const categoriesSnapshot = await getDocs(
-    query(
-      collection(db, "budgetCategories"),
-      where("budget.id", "==", budgetId)
-    )
-  );
-
-  const categories = await Promise.all(
-    categoriesSnapshot.docs.map(async (categoryDoc) => {
-      const categoryData = categoryDoc.data();
-      const categoryRef = await getDoc(
-        firestoreDoc(db, "categories", categoryData.category.id)
-      );
-
-      return {
-        budget: { id: budgetId, ...data },
-        category: categoryRef.data() as Category,
-        allocatedAmount: categoryData.allocatedAmount,
-        spentAmount: categoryData.spentAmount || 0,
-      } as BudgetCategory;
-    })
-  );
-
-  return {
-    id: budgetDoc.id,
-    user: userDoc.data() as User,
-    name: data.name,
-    amount: data.amount,
-    period: data.period,
-    startDate: data.startDate,
-    endDate: data.endDate,
-    isActive: data.isActive,
-    categories: categories,
-  } as Budget;
-};
-
-export const createBudget = async (
-  budgetInput: BudgetInput,
-  categories: { categoryId: string; allocatedAmount: number }[]
-): Promise<Budget> => {
-  const batch = writeBatch(db);
-
-  // Create budget document
-  const budgetRef = firestoreDoc(collection(db, "budgets"));
-  const budget = {
-    ...budgetInput,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
-  batch.set(budgetRef, budget);
-
-  // Create budget categories
-  for (const category of categories) {
-    const categoryRef = firestoreDoc(collection(db, "budgetCategories"));
-    batch.set(categoryRef, {
-      budget: { id: budgetRef.id },
-      category: { id: category.categoryId },
-      allocatedAmount: category.allocatedAmount,
-      spentAmount: 0,
-    });
-  }
-
-  await batch.commit();
-
-  return getBudgetById(budgetRef.id) as Promise<Budget>;
-};
-
-export const updateBudget = async (
-  budgetId: string,
-  updates: Partial<Budget>,
-  categoryUpdates?: { categoryId: string; allocatedAmount: number }[]
-): Promise<void> => {
-  const batch = writeBatch(db);
-
-  // Update budget document
-  const budgetRef = firestoreDoc(db, "budgets", budgetId);
-  batch.update(budgetRef, updates);
-
-  if (categoryUpdates) {
-    // Get existing categories
-    const categoriesSnapshot = await getDocs(
-      query(
-        collection(db, "budgetCategories"),
-        where("budget.id", "==", budgetId)
-      )
-    );
-
-    // Delete existing categories
-    categoriesSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    // Create new categories
-    for (const category of categoryUpdates) {
-      const categoryRef = firestoreDoc(collection(db, "budgetCategories"));
-      batch.set(categoryRef, {
-        budget: { id: budgetId },
-        category: { id: category.categoryId },
-        allocatedAmount: category.allocatedAmount,
-        spentAmount: 0,
-      });
+    if (filters?.isActive !== undefined) {
+      q = query(q, where("isActive", "==", filters.isActive));
     }
-  }
 
-  await batch.commit();
-};
+    if (filters?.period) {
+      q = query(q, where("period", "==", filters.period));
+    }
 
-export const deleteBudget = async (budgetId: string): Promise<void> => {
-  const batch = writeBatch(db);
+    if (filters?.dateRange) {
+      q = query(
+        q,
+        where("startDate", ">=", filters.dateRange.startDate),
+        where("endDate", "<=", filters.dateRange.endDate)
+      );
+    }
 
-  // Soft delete budget
-  const budgetRef = firestoreDoc(db, "budgets", budgetId);
-  batch.update(budgetRef, { isActive: false });
+    if (filters?.status) {
+      q = query(q, where("stats.status", "==", filters.status));
+    }
 
-  // Delete budget categories
-  const categoriesSnapshot = await getDocs(
-    query(
-      collection(db, "budgetCategories"),
-      where("budget.id", "==", budgetId)
-    )
-  );
+    const querySnapshot = await getDocs(q);
+    const budgets: Budget[] = [];
 
-  categoriesSnapshot.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as Budget;
+      budgets.push({
+        ...data,
+        id: doc.id,
+        createdAt: data.createdAt.toString(),
+        updatedAt: data.updatedAt?.toString(),
+        deletedAt: data.deletedAt?.toString(),
+      });
+    });
 
-  await batch.commit();
-};
-
-export const updateBudgetCategorySpending = async (
-  budgetId: string,
-  categoryId: string,
-  spentAmount: number
-): Promise<void> => {
-  const categoriesSnapshot = await getDocs(
-    query(
-      collection(db, "budgetCategories"),
-      where("budget.id", "==", budgetId),
-      where("category.id", "==", categoryId)
-    )
-  );
-
-  if (!categoriesSnapshot.empty) {
-    const categoryDoc = categoriesSnapshot.docs[0];
-    await updateDoc(categoryDoc.ref, { spentAmount });
+    return {
+      status: 200,
+      data: budgets,
+    };
+  } catch (error) {
+    console.error("Error fetching budgets:", error);
+    return {
+      status: 500,
+      error: error instanceof Error ? error.message : "Failed to fetch budgets",
+    };
   }
 };
 
-export const getBudgetCategories = async (
+/**
+ * Get paginated budgets
+ */
+export const getPaginatedBudgets = async (
+  userId: string,
+  page: number,
+  limit: number,
+  filters?: BudgetFilters
+): Promise<ApiResponse<PaginatedResponse<Budget>>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
+
+    const { data: allBudgets } = await getBudgets(userId, filters);
+
+    if (!allBudgets) {
+      throw new Error("Failed to fetch budgets");
+    }
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedBudgets = allBudgets.slice(startIndex, endIndex);
+
+    return {
+      status: 200,
+      data: {
+        items: paginatedBudgets,
+        total: allBudgets.length,
+        page,
+        limit,
+        hasMore: endIndex < allBudgets.length,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching paginated budgets:", error);
+    return {
+      status: 500,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch paginated budgets",
+    };
+  }
+};
+
+/**
+ * Get a specific budget by ID
+ */
+export const getBudgetById = async (
+  userId: string,
   budgetId: string
-): Promise<BudgetCategory[]> => {
-  const categoriesSnapshot = await getDocs(
-    query(
-      collection(db, "budgetCategories"),
-      where("budget.id", "==", budgetId)
-    )
-  );
+): Promise<ApiResponse<Budget>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
 
-  const budgetDoc = await getDoc(firestoreDoc(db, "budgets", budgetId));
-  if (!budgetDoc.exists()) {
-    return [];
-  }
+    const budgetRef = doc(db, `users/${userId}/budgets`, budgetId);
+    const budgetSnap = await getDoc(budgetRef);
 
-  return Promise.all(
-    categoriesSnapshot.docs.map(async (doc) => {
-      const data = doc.data();
-      const categoryRef = await getDoc(firestoreDoc(db, "categories", data.category.id));
-
+    if (!budgetSnap.exists()) {
       return {
-        budget: { id: budgetId, ...budgetDoc.data() },
-        category: categoryRef.data() as Category,
-        allocatedAmount: data.allocatedAmount,
-        spentAmount: data.spentAmount || 0,
-      } as BudgetCategory;
-    })
-  );
+        status: 404,
+        error: "Budget not found",
+      };
+    }
+
+    const data = budgetSnap.data() as Budget;
+    return {
+      status: 200,
+      data: {
+        ...data,
+        id: budgetSnap.id,
+        createdAt: data.createdAt.toString(),
+        updatedAt: data.updatedAt?.toString(),
+        deletedAt: data.deletedAt?.toString(),
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching budget:", error);
+    return {
+      status: 500,
+      error: error instanceof Error ? error.message : "Failed to fetch budget",
+    };
+  }
+};
+
+/**
+ * Create a new budget
+ */
+export const createBudget = async (
+  userId: string,
+  budgetInput: BudgetInput,
+  categories: Record<string, BudgetCategoryAllocation>
+): Promise<ApiResponse<Budget>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
+
+    // Start a batch write
+    const batch = writeBatch(db);
+
+    // Get current budget count for the user
+    const { data: existingBudgets } = await getBudgets(userId, {
+      isActive: true,
+    });
+    const currentBudgetCount = existingBudgets?.length || 0;
+
+    const budgetRef = doc(collection(db, `users/${userId}/budgets`));
+
+    const newBudget: Budget = {
+      ...budgetInput,
+      id: budgetRef.id,
+      userId,
+      categories,
+      stats: {
+        ...DEFAULT_BUDGET_STATS,
+        totalAllocated: Object.values(categories).reduce(
+          (total, category) => total + category.amount,
+          0
+        ),
+      },
+      createdAt: serverTimestamp(),
+      isActive: true,
+    };
+
+    batch.set(budgetRef, newBudget);
+
+    // Update user stats
+    const userRef = doc(db, "users", userId);
+    batch.update(userRef, {
+      "stats.totalBudgets": currentBudgetCount + 1,
+      "stats.lastCalculated": serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    await batch.commit();
+
+    const { data: createdBudget } = await getBudgetById(userId, budgetRef.id);
+
+    if (!createdBudget) {
+      throw new Error("Failed to fetch created budget");
+    }
+
+    return {
+      status: 200,
+      data: createdBudget,
+      message: "Budget created successfully",
+    };
+  } catch (error) {
+    console.error("Error creating budget:", error);
+    return {
+      status: 500,
+      error: error instanceof Error ? error.message : "Failed to create budget",
+    };
+  }
+};
+
+/**
+ * Update an existing budget
+ */
+export const updateBudget = async (
+  userId: string,
+  budgetId: string,
+  updates: Partial<Omit<Budget, "id" | "userId" | "stats">>
+): Promise<ApiResponse<Budget>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
+
+    // Get the current budget state
+    const { data: currentBudget } = await getBudgetById(userId, budgetId);
+
+    if (!currentBudget) {
+      return {
+        status: 404,
+        error: "Budget not found",
+      };
+    }
+
+    const budgetRef = doc(db, `users/${userId}/budgets`, budgetId);
+
+    // Merge current state with updates
+    const updatedData = {
+      ...currentBudget,
+      ...updates,
+      updatedAt: serverTimestamp(),
+    };
+
+    await updateDoc(budgetRef, updatedData);
+
+    const { data: updatedBudget } = await getBudgetById(userId, budgetId);
+
+    if (!updatedBudget) {
+      throw new Error("Failed to fetch updated budget");
+    }
+
+    return {
+      status: 200,
+      data: updatedBudget,
+      message: "Budget updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating budget:", error);
+    return {
+      status: 500,
+      error: error instanceof Error ? error.message : "Failed to update budget",
+    };
+  }
+};
+
+/**
+ * Deactivate (soft delete) a budget
+ */
+export const deactivateBudget = async (
+  userId: string,
+  budgetId: string
+): Promise<ApiResponse<void>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
+
+    // Get the current budget state
+    const { data: currentBudget } = await getBudgetById(userId, budgetId);
+
+    if (!currentBudget) {
+      return {
+        status: 404,
+        error: "Budget not found",
+      };
+    }
+
+    // Start a batch write
+    const batch = writeBatch(db);
+
+    const budgetRef = doc(db, `users/${userId}/budgets`, budgetId);
+    batch.update(budgetRef, {
+      isActive: false,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Get current budget count for the user
+    const { data: activeBudgets } = await getBudgets(userId, {
+      isActive: true,
+    });
+    const currentBudgetCount = activeBudgets?.length || 0;
+
+    // Update user stats
+    const userRef = doc(db, "users", userId);
+    batch.update(userRef, {
+      "stats.totalBudgets": Math.max(0, currentBudgetCount - 1),
+      "stats.lastCalculated": serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    await batch.commit();
+
+    return {
+      status: 200,
+      message: "Budget deactivated successfully",
+    };
+  } catch (error) {
+    console.error("Error deactivating budget:", error);
+    return {
+      status: 500,
+      error:
+        error instanceof Error ? error.message : "Failed to deactivate budget",
+    };
+  }
+};
+
+/**
+ * Update budget category allocations
+ */
+export const updateBudgetCategories = async (
+  userId: string,
+  budgetId: string,
+  categories: Record<string, BudgetCategoryAllocation>
+): Promise<ApiResponse<Budget>> => {
+  try {
+    const budgetRef = doc(db, CollectionPaths.budgets(userId), budgetId);
+    const budgetSnap = await getDoc(budgetRef);
+
+    if (!budgetSnap.exists()) {
+      return { status: 404, error: "Budget not found" };
+    }
+
+    const batch = writeBatch(db);
+
+    // Update budget categories
+    batch.update(budgetRef, {
+      categories,
+      updatedAt: serverTimestamp(),
+      stats: {
+        totalRemaining: Object.values(categories).reduce(
+          (total, category) => total + category.amount,
+          0
+        ),
+        totalSpent: budgetSnap.data().stats.totalAllocated - Object.values(categories).reduce(
+          (total, category) => total + category.amount,
+          0
+        ),
+      },
+    });
+
+    await batch.commit();
+
+    const updatedBudget = await getBudgetById(userId, budgetId);
+    return updatedBudget;
+  } catch (error) {
+    console.error("Error updating budget categories:", error);
+    return {
+      status: 500,
+      error: "Failed to update budget categories",
+    };
+  }
+};
+
+/**
+ * Get budgets by date range
+ */
+export const getBudgetsByDateRange = async (
+  userId: string,
+  dateRange: DateRange
+): Promise<ApiResponse<Budget[]>> => {
+  try {
+    // First validate user exists and is active
+    await validateUser(userId);
+
+    const { data: budgets } = await getBudgets(userId, {
+      dateRange,
+      isActive: true,
+    });
+
+    if (!budgets) {
+      throw new Error("Failed to fetch budgets");
+    }
+
+    return {
+      status: 200,
+      data: budgets,
+    };
+  } catch (error) {
+    console.error("Error fetching budgets by date range:", error);
+    return {
+      status: 500,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch budgets by date range",
+    };
+  }
 };

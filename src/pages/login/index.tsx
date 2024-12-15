@@ -24,34 +24,35 @@ const Login = () => {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setError('');
-      setLoading(true);
-      await login(email, password);
-      navigate('/');
-    } catch (err) {
-      setError('Failed to log in. Please check your credentials.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+    const handleEmailLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        setError('');
+        setLoading(true);
+        await login(email, password, rememberMe);
+        navigate('/');
+      } catch (err) {
+        setError('Failed to log in. Please check your credentials.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setError('');
-      setLoading(true);
-      await loginWithGoogle();
-      navigate('/');
-    } catch (err) {
-      setError('Failed to log in with Google.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleGoogleLogin = async () => {
+      try {
+        setError('');
+        setLoading(true);
+        await loginWithGoogle(rememberMe);
+        navigate('/');
+      } catch (err) {
+        setError('Failed to log in with Google.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 px-4 py-8 sm:px-6 lg:px-8">

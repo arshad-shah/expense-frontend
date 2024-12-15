@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
 
   const getColumnClasses = (widget: WidgetType) => {
     // Base classes for all widgets
-    let classes = ['col-span-1'];
+    const classes = ['col-span-1'];
 
     // Medium screens (md: 768px and up)
     if (widget.span >= 2 || widget.minSpan === 2) {
@@ -149,12 +149,6 @@ const Dashboard: React.FC = () => {
             Welcome back, {firstName} {lastName}
           </h1>
           <p className="text-gray-600">Here's your financial overview</p>
-        </div>
-        <div className="text-left sm:text-right">
-          <p className="text-sm text-gray-600">Last updated</p>
-          <p className="text-sm font-medium text-gray-900">
-            {new Date().toLocaleDateString()}
-          </p>
         </div>
       </div>
 
