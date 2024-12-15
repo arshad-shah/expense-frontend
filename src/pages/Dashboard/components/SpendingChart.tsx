@@ -151,13 +151,7 @@ const SpendingChart = () => {
     );
   }
 
-  type CustomTooltipProps = {
-    active?: boolean;
-    payload?: unknown;
-    label?: string;
-  };
-
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-100">
@@ -227,7 +221,7 @@ const SpendingChart = () => {
             />
 
             <Tooltip
-              content={(props) => <CustomTooltip {...props} />}
+              content={<CustomTooltip />}
               cursor={{ stroke: "#e2e8f0" }}
             />
 

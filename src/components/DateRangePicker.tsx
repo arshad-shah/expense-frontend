@@ -89,12 +89,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     </div>
   );
 
-  type CustomInputProps = {
-    value: string;
-    onClick: () => void;
-  };
-
-  const CustomInput = React.forwardRef<HTMLDivElement, CustomInputProps>(
+  const CustomInput = React.forwardRef<HTMLDivElement, any>(
     ({ value, onClick }, ref) => (
       <motion.div
         ref={ref}
