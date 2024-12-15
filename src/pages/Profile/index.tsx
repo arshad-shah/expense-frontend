@@ -20,7 +20,7 @@ import ErrorState from '@/components/ErrorState';
 import PageLoader from '@/components/PageLoader';
 import { CURRENCY } from '@/constants';
 import { useUser } from '@/contexts/UserContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
@@ -244,71 +244,15 @@ const ProfileComponent = () => {
                   </div>
                   <p className="text-gray-500">{authUser.email}</p>
                   <p className="text-sm text-gray-400 mt-1">
-                    Member since {new Date(authUser.stats.signupDate).toLocaleDateString()}
+                    Member since {formatDate(authUser.stats.signupDate, {
+                      useRelative: false,
+                      shortFormat: true,
+                    })}
                   </p>
                 </div>
               )}
             </div>
           </div>
-        </div>
-
-        {/* Stats Grid with Edit */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Monthly Income"
-            value={formatCurrency(authUser.stats.monthlyIncome, authUser.preferences.currency)}
-            icon={DollarSign}
-            trend={{
-              value: 5,
-              direction: 'up'
-            }}
-            color="text-green-600"
-            isEditing={editingStatKey === 'monthlyIncome'}
-            editValue={editedStats.monthlyIncome}
-            onEdit={() => setEditingStatKey('monthlyIncome')}
-            onEditChange={(value) => setEditedStats(prev => ({ ...prev, monthlyIncome: Number(value) }))}
-            onSave={() => handleSaveStat('monthlyIncome')}
-            onCancel={() => setEditingStatKey(null)}
-          />
-          <StatCard
-            title="Monthly Spending"
-            value={formatCurrency(authUser.stats.monthlySpending, authUser.preferences.currency)}
-            icon={CreditCard}
-            trend={{
-              value: 2,
-              direction: 'down'
-            }}
-            color="text-red-600"
-            isEditing={editingStatKey === 'monthlySpending'}
-            editValue={editedStats.monthlySpending}
-            onEdit={() => setEditingStatKey('monthlySpending')}
-            onEditChange={(value) => setEditedStats(prev => ({ ...prev, monthlySpending: Number(value) }))}
-            onSave={() => handleSaveStat('monthlySpending')}
-            onCancel={() => setEditingStatKey(null)}
-          />
-          <StatCard
-            title="Savings Rate"
-            value={`${authUser.stats.savingsRate.toFixed(1)}%`}
-            icon={PiggyBank}
-            trend={{
-              value: 3,
-              direction: 'up'
-            }}
-            color="text-purple-600"
-            isEditing={editingStatKey === 'savingsRate'}
-            editValue={editedStats.savingsRate}
-            onEdit={() => setEditingStatKey('savingsRate')}
-            onEditChange={(value) => setEditedStats(prev => ({ ...prev, savingsRate: Number(value) }))}
-            onSave={() => handleSaveStat('savingsRate')}
-            onCancel={() => setEditingStatKey(null)}
-          />
-          <StatCard
-            title="Active Budgets"
-            value={authUser.stats.totalBudgets}
-            icon={Settings}
-            color="text-indigo-600"
-            hasEditButton={false}
-          />
         </div>
 
         {/* Settings/Preferences */}

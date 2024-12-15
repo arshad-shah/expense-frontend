@@ -1,22 +1,190 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ArrowUpRight, 
-  ArrowDownRight, 
-  AlertTriangle,
+  ArrowDownRight,
+  Calendar,
+  Tag,
+  PiggyBank as Bank,
   Clock,
-  CreditCard,
-  MoreVertical
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { getRecentTransactions } from '@/services/TransactionService';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Transaction, TransactionType } from '@/types';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import EmptyState from '@/components/EmptyState';
+import { getCategories } from '@/services/userService';
+import { Category, Transaction, TransactionType } from '@/types';
+interface TransactionItemProps {
+  transaction: Transaction;
+  category?: Category;
+  formatDate: (date: string) => string;
+  formatAmount: (amount: number, type: TransactionType) => string;
+  isHovered: boolean;
+  onHover: (id: string | null) => void;
+}
 
-const RecentTransactions = () => {
+const TransactionTypeIcon: React.FC<{ type: TransactionType }> = ({ type }) => (
+  <motion.div
+    initial={{ scale: 0.8 }}
+    animate={{ scale: 1 }}
+    className={cn(
+      "flex items-center justify-center w-10 h-10 rounded-xl",
+      type === "INCOME" 
+        ? "bg-emerald-50 text-emerald-600" 
+        : "bg-rose-50 text-rose-600"
+    )}
+  >
+    {type === "INCOME" ? (
+      <ArrowUpRight className="h-5 w-5" />
+    ) : (
+      <ArrowDownRight className="h-5 w-5" />
+    )}
+  </motion.div>
+);
+
+const TransactionItem: React.FC<TransactionItemProps> = ({ 
+  transaction, 
+  category,
+  formatDate,
+  formatAmount,
+  isHovered,
+  onHover 
+}) => {
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  return (
+    <motion.div
+      onHoverStart={() => onHover(transaction.id)}
+      onHoverEnd={() => onHover(null)}
+      className={cn(
+        "transition-colors duration-150",
+        isHovered ? "bg-gray-50" : "hover:bg-gray-50"
+      )}
+    >
+      {/* Desktop view */}
+      <div className="hidden md:flex items-center justify-between p-4">
+        <div className="flex items-center space-x-4">
+          <TransactionTypeIcon type={transaction.type} />
+          
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-900">
+                {transaction.description}
+              </span>
+              <span 
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium",
+                  "transition-opacity duration-150 shadow-sm",
+                  isHovered ? "opacity-100" : "opacity-90"
+                )}
+                style={{
+                  backgroundColor: `${category?.color || '#6B7280'}15`,
+                  color: category?.color || '#6B7280'
+                }}
+              >
+                <Tag className="w-3 h-3" />
+                {transaction.categoryName}
+              </span>
+            </div>
+
+            <div className="flex items-center text-sm text-gray-500 gap-4">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span>{formatDate(transaction.transactionDate)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Bank className="w-4 h-4 text-gray-400" />
+                <span>{transaction.accountName}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <span
+          className={cn(
+            "text-sm font-medium px-3 py-1 rounded-lg",
+            transaction.type === "INCOME" 
+              ? "text-emerald-700 bg-emerald-50" 
+              : "text-rose-700 bg-rose-50"
+          )}
+        >
+          {transaction.type === "INCOME" ? "+" : "-"}
+          {formatAmount(transaction.amount, transaction.type)}
+        </span>
+      </div>
+
+      {/* Mobile view */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full p-4 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <TransactionTypeIcon type={transaction.type} />
+            <div>
+              <span className="text-sm font-medium text-gray-900">
+                {transaction.description}
+              </span>
+              <span
+                className={cn(
+                  "text-sm font-medium ml-2",
+                  transaction.type === "INCOME" 
+                    ? "text-emerald-700"
+                    : "text-rose-700"
+                )}
+              >
+                {transaction.type === "INCOME" ? "+" : "-"}
+                {formatAmount(transaction.amount, transaction.type)}
+              </span>
+            </div>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-gray-400" />
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-gray-400" />
+              <span 
+                className="text-sm"
+                style={{ color: category?.color || '#6B7280' }}
+              >
+                {transaction.categoryName}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">
+                {formatDate(transaction.transactionDate)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Bank className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">
+                {transaction.accountName}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+const RecentTransactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const { user } = useAuth();
+  const [categories, setCategories] = useState<(Category | undefined)[]>([]);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -26,6 +194,21 @@ const RecentTransactions = () => {
         setLoading(true);
         const response = await getRecentTransactions(user.id, 5);
         if (response.status === 200 && response.data) {
+          const categoriesOfTransactions = response.data.map(t => ({
+            categoryId: t.categoryId,
+            category: t.categoryName,
+          }));
+          
+          const allCategories = await getCategories(user.id);
+          if (allCategories.error || !allCategories.data) {
+            throw new Error('Failed to fetch categories');
+          }
+    
+          const categoriesForTransactions = categoriesOfTransactions.map(c => 
+            allCategories.data?.find(cat => cat.id === c.categoryId)
+          );
+    
+          setCategories(categoriesForTransactions);
           setTransactions(response.data);
         } else {
           setError(response.error || 'Failed to load recent transactions');
@@ -41,15 +224,21 @@ const RecentTransactions = () => {
     fetchTransactions();
   }, [user]);
 
-  const formatCurrency = (amount: number, type: TransactionType) => {
-    const formatted = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-    return `${type === 'INCOME' ? '+' : '-'}${formatted}`;
+  const formatAmount = (amount: number, type: TransactionType): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: user?.preferences?.currency || 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(amount));
   };
 
   if (loading) {
@@ -62,20 +251,17 @@ const RecentTransactions = () => {
           </div>
           <Clock className="w-5 h-5 text-gray-400" />
         </div>
-        <div className="space-y-4">
+        <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((index) => (
-            <div key={index} className="animate-pulse flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-100">
-              <div className="flex items-center gap-4 mb-3 sm:mb-0">
-                <div className="h-10 w-10 bg-gray-100 rounded-full"></div>
+            <div key={index} className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-gray-100 rounded-xl" />
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-100 rounded w-32"></div>
-                  <div className="h-3 bg-gray-100 rounded w-24"></div>
+                  <div className="h-4 bg-gray-100 rounded w-32" />
+                  <div className="h-3 bg-gray-100 rounded w-24" />
                 </div>
               </div>
-              <div className="text-right space-y-2">
-                <div className="h-4 bg-gray-100 rounded w-20 ml-auto"></div>
-                <div className="h-3 bg-gray-100 rounded w-16 ml-auto"></div>
-              </div>
+              <div className="h-6 bg-gray-100 rounded w-24" />
             </div>
           ))}
         </div>
@@ -101,106 +287,49 @@ const RecentTransactions = () => {
     );
   }
 
-  const TransactionIcon = ({ type }: { type: TransactionType }) => {
-    const baseClasses = "p-2.5 rounded-full flex items-center justify-center transition-colors duration-200";
-    const iconClasses = "w-5 h-5";
-    
-    if (type === 'INCOME') {
-      return (
-        <div className={cn(baseClasses, "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100")}>
-          <ArrowUpRight className={iconClasses} />
-        </div>
-      );
-    }
-    return (
-      <div className={cn(baseClasses, "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100")}>
-        <ArrowDownRight className={iconClasses} />
-      </div>
-    );
-  };
-
   if (transactions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+              <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+            </div>
+            <Clock className="w-5 h-5 text-gray-400" />
+          </div>
+        </div>
+        <EmptyState
+          heading="No Recent Transactions"
+          message="Start tracking your finances by adding your first transaction."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
             <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
           </div>
           <Clock className="w-5 h-5 text-gray-400" />
         </div>
-        <div className="text-center py-12">
-          <p className="text-gray-500">No recent transactions</p>
-          <p className="text-sm text-gray-400 mt-1">Start tracking your expenses to see them here</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-          <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
-        </div>
-        <Clock className="w-5 h-5 text-gray-400" />
       </div>
 
-      <div className="space-y-4">
-        {transactions.map((transaction) => (
-          <div 
+      <div className="divide-y divide-gray-100">
+        {transactions.map((transaction, index) => (
+          <TransactionItem
             key={transaction.id}
-            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
-          >
-            <div className="flex items-start sm:items-center gap-4 mb-3 sm:mb-0">
-              <TransactionIcon type={transaction.type} />
-              
-              <div className="space-y-1 min-w-0">
-                <div className="flex flex-wrap items-start sm:items-center gap-2">
-                  <p className="font-medium text-gray-900 break-words">
-                    {transaction.description}
-                  </p>
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap",
-                    transaction.type === 'INCOME' 
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-indigo-50 text-indigo-700"
-                  )}>
-                    {transaction.type === 'INCOME' ? 'Income' : 'Expense'}
-                  </span>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-gray-600">
-                    {transaction.categoryName}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-gray-500">
-                    <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{transaction.accountName}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between sm:justify-end gap-4 pl-12 sm:pl-0">
-              <div className="text-right">
-                <p className={cn(
-                  "font-medium whitespace-nowrap",
-                  transaction.type === 'INCOME' ? "text-emerald-600" : "text-indigo-600"
-                )}>
-                  {formatCurrency(transaction.amount, transaction.type)}
-                </p>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {formatDate(transaction.transactionDate)}
-                </p>
-              </div>
-              
-              <button className="sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded-lg">
-                <MoreVertical className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-          </div>
+            transaction={transaction}
+            category={categories[index]}
+            formatDate={formatDate}
+            formatAmount={formatAmount}
+            isHovered={hoveredRow === transaction.id}
+            onHover={setHoveredRow}
+          />
         ))}
       </div>
     </div>

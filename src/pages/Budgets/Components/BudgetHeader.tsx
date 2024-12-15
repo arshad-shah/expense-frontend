@@ -19,7 +19,7 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
       {/* Background Accent */}
       <div className="absolute inset-0 via-white to-gray-50 rounded-xl" />
 
-      <div className="relative px-6 py-4 sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+      <div className="relative sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         {/* Title Section */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}

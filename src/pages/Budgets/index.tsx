@@ -42,7 +42,7 @@ const Budgets: React.FC = () => {
   const [performance, setPerformance] = useState<BudgetPerformance[]>([]);
   const [filters, setFilters] = useState<BudgetFilters>({
     period: "MONTHLY",
-    isActive: true
+    isActive: true,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +63,7 @@ const Budgets: React.FC = () => {
         transaction.type === 'EXPENSE' ? total + transaction.amount : total,
       0
     );
+    
 
     const allocated = budget.amount;
     const remaining = allocated - spent;
@@ -136,13 +137,15 @@ const Budgets: React.FC = () => {
         categoryIds,
         dateRange: filters.dateRange,
         types: ["EXPENSE"]
-      });
+      },
+      1,
+      1000
+    );
       
 
       if (!transactionsResponse.data || transactionsResponse.error) {
         throw new Error(transactionsResponse.error || 'Failed to fetch transactions');
       }
-
       // Calculate performance for each budget
       const calculatedPerformance = fetchedBudgets.map(budget =>
         calculateBudgetPerformance(budget, transactionsResponse.data?.items || [])
@@ -187,7 +190,7 @@ const Budgets: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-2">
       <BudgetHeader
         onOpenFilter={handleOpenFilter}
         onAddBudget={handleOpenAddModal}

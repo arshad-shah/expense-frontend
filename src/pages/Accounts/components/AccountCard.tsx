@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MoreVertical, Edit2, Trash2, ExternalLink, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import type { Account, Transaction } from "@/types";
 import EditAccountModal from "./EditAccountModal";
@@ -72,6 +72,15 @@ const AccountCard: React.FC<AccountCardProps> = ({ account, icon: Icon, onUpdate
   const [deleteError, setDeleteError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    const actionButtonRefs = useRef<{ [key: string]: React.RefObject<HTMLButtonElement> }>({});
+    
+      // Initialize refs for action buttons
+    useEffect(() => {
+          if (!actionButtonRefs.current[account.id]) {
+            actionButtonRefs.current[account.id] = React.createRef();
+          }
+      }, [account]);
 
   const styles = getAccountTypeStyles(account.accountType);
 
@@ -240,6 +249,7 @@ const lastSyncDate = account.stats?.lastSync
                 }}
                 aria-label="Account options"
                 size="icon"
+                ref={actionButtonRefs.current[account.id]}
                 variant="ghost"
                 className={cn(
                   "hover:bg-white/50",
@@ -252,6 +262,7 @@ const lastSyncDate = account.stats?.lastSync
               
               <Dropdown
                 show={showDropdown}
+                alignTo={actionButtonRefs.current[account.id]?.current}
                 onClose={() => setShowDropdown(false)}
                 items={dropdownItems}
                 position="right"

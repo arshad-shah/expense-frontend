@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import {
   Select,
@@ -12,19 +12,19 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { updateTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts } from "@/services/AccountService";
 import type { 
   Transaction, 
   Account, 
   Category, 
   TransactionInput,
 } from "@/types";
-import { getCategories } from "@/services/userService";
 
 interface EditTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: Transaction;
+  categories: Category[];
+  accounts: Account[];
   onUpdate: () => void;
 }
 
@@ -32,11 +32,11 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   isOpen,
   onClose,
   transaction,
+  categories,
+  accounts,
   onUpdate,
 }) => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -50,31 +50,6 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     isRecurring: transaction.isRecurring,
     metadata: transaction.metadata
   });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.id) return;
-
-      try {
-        const [accountsResponse, categoriesResponse] = await Promise.all([
-          getAccounts(user.id),
-          getCategories(user.id),
-        ]);
-
-        if (Array.isArray(accountsResponse.data)) {
-          setAccounts(accountsResponse.data);
-        }
-
-        if ('data' in categoriesResponse && categoriesResponse.data) {
-          setCategories(categoriesResponse.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load account and category data");
-      }
-    };
-    fetchData();
-  }, [user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
