@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import {
   Select,
@@ -12,14 +12,19 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { updateTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts } from "@/services/AccountService";
-import { getCategories } from "@/services/CategoryService";
-import type { Transaction, Account, Category } from "@/types";
+import type { 
+  Transaction, 
+  Account, 
+  Category, 
+  TransactionInput,
+} from "@/types";
 
 interface EditTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: Transaction;
+  categories: Category[];
+  accounts: Account[];
   onUpdate: () => void;
 }
 
@@ -27,81 +32,99 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   isOpen,
   onClose,
   transaction,
+  categories,
+  accounts,
   onUpdate,
 }) => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    accountId: transaction.account.id,
-    categoryId: transaction.category.id,
+  const [error, setError] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState<Partial<TransactionInput>>({
+    accountId: transaction.accountId,
+    categoryId: transaction.categoryId,
     amount: transaction.amount,
     type: transaction.type,
     description: transaction.description,
     transactionDate: transaction.transactionDate.split("T")[0],
+    isRecurring: transaction.isRecurring,
+    metadata: transaction.metadata
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (user) {
-        try {
-          const [fetchedAccounts, fetchedCategories] = await Promise.all([
-            getAccounts(user.id),
-            getCategories(user.id),
-          ]);
-          setAccounts(fetchedAccounts);
-          setCategories(fetchedCategories);
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        }
-      }
-    };
-    fetchData();
-  }, [user]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    
+    setLoading(true);
+    setError(null);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-
-  try {
-    // Find the selected account
-    const selectedAccount = accounts.find(
-      (account) => account.id === formData.accountId
-    );
-
-    if (!selectedAccount) {
-      alert("Invalid account selected.");
-      return;
-    }
-
-    // Check if the transaction amount exceeds the account balance
-    if (formData.type === "EXPENSE" && formData.amount > selectedAccount.balance) {
-      alert(
-        `Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`
+    try {
+      // Find the selected account
+      const selectedAccount = accounts.find(
+        (account) => account.id === formData.accountId
       );
-      return;
+
+      if (!selectedAccount) {
+        setError("Invalid account selected.");
+        return;
+      }
+
+      // Check if the transaction amount exceeds the account balance
+      if (
+        formData.type === "EXPENSE" && 
+        formData.amount && 
+        formData.amount > selectedAccount.balance
+      ) {
+        setError(`Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`);
+        return;
+      }
+
+      // Get the selected category
+      const selectedCategory = categories.find(
+        (category) => category.id === formData.categoryId
+      );
+
+      if (!selectedCategory) {
+        setError("Invalid category selected.");
+        return;
+      }
+
+      // Call the updated transaction service
+      const response = await updateTransaction(
+        user.id,
+        transaction.id,
+        {
+          ...formData,
+          // Include denormalized fields required by the new service
+          accountName: selectedAccount.name,
+          categoryName: selectedCategory.name
+        }
+      );
+
+      if (response.status === 200) {
+        onUpdate();
+        onClose();
+      } else {
+        throw new Error(response.error || "Failed to update transaction");
+      }
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      setError(error instanceof Error ? error.message : "Failed to update transaction");
+    } finally {
+      setLoading(false);
     }
-
-    // Proceed with updating the transaction
-    await updateTransaction(transaction.id, {
-      ...formData,
-      userId: user?.id as string,
-    });
-
-    onUpdate();
-    onClose();
-  } catch (error) {
-    console.error("Error updating transaction:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Edit Transaction">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Error Alert */}
+        {error && (
+          <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Account Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Account</label>
@@ -153,7 +176,12 @@ const handleSubmit = async (e: React.FormEvent) => {
           <label className="block text-sm font-medium text-gray-700">Type</label>
           <Select
             value={formData.type}
-            onValueChange={(value) => setFormData({ ...formData, type: value })}
+            onValueChange={(value) => setFormData({ 
+              ...formData, 
+              type: value as "INCOME" | "EXPENSE",
+              // Reset category when type changes as they're filtered by type
+              categoryId: undefined 
+            })}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select type" />

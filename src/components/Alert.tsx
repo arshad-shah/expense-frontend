@@ -8,6 +8,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/Button";
 
 type AlertVariant = 
   | "success" 
@@ -173,16 +174,20 @@ const Alert: React.FC<AlertProps> = ({
 
       {/* Dismiss button */}
       {dismissible && (
-        <button
+        <Button
           onClick={onDismiss}
-          className={cn(
-            "absolute top-4 right-4 p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
-            variantStyles.buttonClass
-          )}
+          variant="ghost"
+          size="icon"
+          className={
+            cn(
+              "absolute top-4 right-4 p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
+              variantStyles.buttonClass
+            )
+          }
           aria-label="Dismiss alert"
         >
           <XIcon className="w-4 h-4" />
-        </button>
+        </Button>
       )}
     </div>
   );
