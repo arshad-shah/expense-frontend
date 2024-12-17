@@ -251,7 +251,7 @@ const Navigation: React.FC = () => {
   return (
     <>
       <NavContainer isScrolled={isScrolled}>
-        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <div className=" px-4 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left section */}
             <div className="flex items-center flex-1">
@@ -288,10 +288,14 @@ const Navigation: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsMobileMenuOpen(true)}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden rounded-xl"
             >
-              <Menu className="h-5 w-5 text-gray-600" />
+              {isMobileMenuOpen ? (
+                <X className="h-5 w-5 text-gray-600" />
+              ) : (
+                <Menu className="h-5 w-5 text-gray-600" />
+              )}
             </Button>
           </div>
         </div>

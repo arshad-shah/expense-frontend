@@ -4,8 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Mail, 
   Lock, 
-  LogIn, 
-  AlertCircle,
+  LogIn,
   Layout,
   ArrowRight
 } from 'lucide-react';
@@ -13,11 +12,13 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Checkbox } from '@/components/Checkbox';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ErrorResponse, FirebaseErrorHandler } from '@/lib/firebase-error-handler';
+import Alert from '@/components/Alert';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ErrorResponse | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   
@@ -28,12 +29,12 @@ const Login = () => {
     const handleEmailLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       try {
-        setError('');
+        setError(undefined);
         setLoading(true);
         await login(email, password, rememberMe);
         navigate('/');
       } catch (err) {
-        setError('Failed to log in. Please check your credentials.');
+        setError(FirebaseErrorHandler.auth(err, 'login'));
         console.error(err);
       } finally {
         setLoading(false);
@@ -42,12 +43,12 @@ const Login = () => {
 
     const handleGoogleLogin = async () => {
       try {
-        setError('');
+        setError(undefined);
         setLoading(true);
         await loginWithGoogle(rememberMe);
         navigate('/');
       } catch (err) {
-        setError('Failed to log in with Google.');
+        setError(FirebaseErrorHandler.auth(err, 'login'));
         console.error(err);
       } finally {
         setLoading(false);
@@ -98,11 +99,10 @@ const Login = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center space-x-2 rounded-xl border border-red-200 bg-red-50 p-4"
-                role="alert"
               >
-                <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                <span className="text-sm text-red-600">{error}</span>
+                <Alert title={error.title} variant="error">
+                  {error.message}
+                </Alert>
               </motion.div>
             )}
           </AnimatePresence>

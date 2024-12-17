@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef, ReactNode } from "react";
+import { InputHTMLAttributes, forwardRef, ReactNode, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
   variant?: "default" | "filled" | "outline" | "minimal";
   fullWidth?: boolean;
   inputSize?: "sm" | "md" | "lg";
+  showRequired?: boolean; // New prop to control required indicator visibility
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -24,8 +25,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     variant = "default",
     fullWidth = true,
     inputSize = "md",
+    required = false,
+    showRequired = true, // Default to showing required indicator
     ...props 
   }, ref) => {
+    const [value, setValue] = useState(props.defaultValue || props.value || "");
+    const [isTouched, setIsTouched] = useState(false);
+    const [showIsRequired, setShowIsRequired] = useState(false);
+
     const variants = {
       default: "border-gray-200 bg-white hover:border-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20",
       filled: "border-transparent bg-gray-50 hover:bg-gray-100/80 focus:bg-white focus:border-indigo-500 focus:ring-indigo-500/20",
@@ -51,6 +58,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       lg: "text-sm"
     };
 
+    useEffect(() => {
+          const showRequiredHelper = required && 
+      showRequired && 
+      !value && 
+      isTouched && 
+      !error;
+      setShowIsRequired(showRequiredHelper);
+    }, [required, showRequired, value, isTouched, error]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue(e.target.value);
+      props.onChange?.(e);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      setIsTouched(true);
+      props.onBlur?.(e);
+    };
+
     return (
       <motion.div 
         className={cn("space-y-2", fullWidth ? "w-full" : "w-auto")}
@@ -68,9 +94,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <label
               htmlFor={props.id}
               className={cn(
-                "block font-medium text-gray-700 transition-colors duration-200",
+                "block font-medium transition-colors duration-200",
                 labelSizes[inputSize],
-                error && "text-red-500"
+                error ? "text-red-500" : "text-gray-700",
+                required && "after:content-['*'] after:ml-1 after:text-red-500"
               )}
             >
               {label}
@@ -106,6 +133,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             ref={ref}
+            required={false} // Prevent browser's default required UI
+            aria-required={required} // Keep accessibility
             className={cn(
               "block w-full rounded-lg border transition-all duration-200",
               "text-gray-900 placeholder:text-gray-400/70",
@@ -118,6 +147,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               error && "!border-red-500 !ring-red-500/20 focus:!border-red-500 focus:!ring-red-500/20",
               className
             )}
+            onChange={handleChange}
+            onBlur={handleBlur}
             {...props}
           />
 
@@ -136,7 +167,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         </motion.div>
 
         <AnimatePresence mode="wait">
-          {(error || helperText) && (
+          {(error || helperText || showIsRequired) && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
@@ -163,6 +194,27 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     />
                   </svg>
                   <span>{error}</span>
+                </motion.p>
+              ) : showIsRequired ? (
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-gray-500 flex items-center gap-1.5"
+                >
+                  <svg
+                    className="h-3.5 w-3.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  <span>This field is required</span>
                 </motion.p>
               ) : helperText ? (
                 <motion.p 

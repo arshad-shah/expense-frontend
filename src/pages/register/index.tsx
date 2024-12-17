@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/Select";
 import { cn } from "@/lib/utils";
+import { CURRENCY, PASSWORD_REQUIREMENTS, VALIDATION_RULES } from "@/constants";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -40,33 +41,6 @@ const Register = () => {
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  const currencies = [
-    { value: "USD", label: "US Dollar (USD)" },
-    { value: "EUR", label: "Euro (EUR)" },
-    { value: "GBP", label: "British Pound (GBP)" },
-    { value: "JPY", label: "Japanese Yen (JPY)" },
-    { value: "CAD", label: "Canadian Dollar (CAD)" },
-    { value: "AUD", label: "Australian Dollar (AUD)" },
-    { value: "CNY", label: "Chinese Yuan (CNY)" },
-  ];
-
-  const passwordRequirements = [
-    {
-      label: "At least one uppercase letter",
-      validator: (p: string) => /[A-Z]/.test(p),
-    },
-    {
-      label: "At least one lowercase letter",
-      validator: (p: string) => /[a-z]/.test(p),
-    },
-    { label: "At least one number", validator: (p: string) => /[0-9]/.test(p) },
-    {
-      label: "At least one special character",
-      validator: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p),
-    },
-    { label: "Minimum 8 characters", validator: (p: string) => p.length >= 8 },
-  ];
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -77,27 +51,14 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      setError("Please enter a valid email address");
-      return false;
-    }
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      setError("Please enter both first and last names");
-      return false;
-    }
-    if (
-      !passwordRequirements.every((req) => req.validator(formData.password))
-    ) {
-      setError("Password does not meet all requirements");
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return false;
+    for (const rule of Object.values(VALIDATION_RULES)) {
+      if (!rule.test(formData)) {
+        setError(rule.message);
+        return false;
+      }
     }
     return true;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -253,7 +214,7 @@ const Register = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map(({ value, label }) => (
+                  {CURRENCY.map(({ value, label }) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
@@ -290,7 +251,7 @@ const Register = () => {
                       Password requirements:
                     </p>
                     <ul className="space-y-1">
-                      {passwordRequirements.map((req, index) => (
+                      {PASSWORD_REQUIREMENTS.map((req, index) => (
                         <li key={index} className="flex items-center text-sm">
                           <motion.div
                             initial={false}

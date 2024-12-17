@@ -20,6 +20,7 @@ import ErrorState from "@/components/ErrorState";
 import { getTransactions } from "@/services/TransactionService";
 import AccountHeader from "@/pages/Accounts/components/AccountHeader";
 import { motion } from "framer-motion";
+import { ErrorResponse, FirebaseErrorHandler } from "@/lib/firebase-error-handler";
 
 const ITEMS_PER_PAGE = 9; // 3x3 grid
 
@@ -35,7 +36,7 @@ const Accounts: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorResponse | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const fetchAccounts = async (page: number = 1) => {
@@ -63,11 +64,10 @@ const Accounts: React.FC = () => {
           }));
         }
       } else {
-        setError(response.error || "Failed to load accounts");
+        setError(FirebaseErrorHandler.firestore(response.error, 'load accounts'));
       }
     } catch (err) {
-      setError("Failed to load accounts");
-      console.error("Error fetching accounts:", err);
+      setError(FirebaseErrorHandler.firestore(err, 'load accounts'));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -93,7 +93,7 @@ const Accounts: React.FC = () => {
         setTransactions(response.data.items);
       }
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      setError(FirebaseErrorHandler.firestore(error, 'load transactions'));
     }
   };
 
