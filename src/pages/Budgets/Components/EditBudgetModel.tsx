@@ -10,11 +10,14 @@ import {
   SelectValue,
 } from "@/components/Select";
 import { Button } from "@/components/Button";
-import { getCategories } from "@/services/CategoryService";
 import { updateBudget } from "@/services/BudgetService";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Budget, Category } from "@/types";
-import { DollarSign, Save } from "lucide-react";
+import type { Budget, BudgetPeriod, Category } from "@/types";
+import { DollarSign, Save, AlertCircle } from "lucide-react";
+import { getCategories } from "@/services/userService";
+import { formatCurrency } from "@/lib/utils";
+import { ProgressBar } from "@/components/Progressbar";
+import Alert from "@/components/Alert";
 
 interface EditBudgetModalProps {
   isOpen: boolean;
@@ -32,13 +35,18 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     amount: 0,
     period: "MONTHLY",
     startDate: "",
     endDate: "",
-    categoryAllocations: [] as { categoryId: string; allocatedAmount: number }[],
+    categoryAllocations: [] as {
+      categoryId: string;
+      allocatedAmount: number;
+    }[],
+    categories: [],
   });
 
   useEffect(() => {
@@ -49,75 +57,112 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
         period: budget.period,
         startDate: budget.startDate.split("T")[0],
         endDate: budget.endDate.split("T")[0],
-        categoryAllocations: (budget.categories ?? []).map((cat) => ({
-          categoryId: cat.category.id,
-          allocatedAmount: cat.allocatedAmount,
+        categoryAllocations: budget.categoryAllocations.map((alloc) => ({
+          categoryId: alloc.categoryId,
+          allocatedAmount: alloc.amount,
         })),
+        // @ts-expect-error - Type mismatch in categories
+        categories: budget.categories,
       });
     }
 
     const fetchCategories = async () => {
       if (user) {
         const fetchedCategories = await getCategories(user.id);
-        setCategories(fetchedCategories);
+        if (fetchedCategories.data) {
+          fetchedCategories.data = fetchedCategories.data.filter(
+            (category) => category.type === "EXPENSE",
+          );
+          setCategories(fetchedCategories.data);
+        }
       }
     };
 
     fetchCategories();
   }, [budget, user]);
 
-  const totalAllocated = formData.categoryAllocations
-    .reduce((sum, alloc) => sum + alloc.allocatedAmount, 0);
-  
+  const totalAllocated = formData.categoryAllocations.reduce(
+    (sum, alloc) => sum + alloc.allocatedAmount,
+    0,
+  );
+
   const remainingAmount = formData.amount - totalAllocated;
-  const allocationPercentage = formData.amount > 0 
-    ? ((totalAllocated / formData.amount) * 100).toFixed(1) 
-    : 0;
-  
-  const isFullyAllocated = totalAllocated >= formData.amount;
+  const allocationPercentage =
+    formData.amount > 0
+      ? ((totalAllocated / formData.amount) * 100).toFixed(1)
+      : 0;
 
   const handleCategoryAllocation = (categoryId: string, newAmount: number) => {
-    const currentAllocation = formData.categoryAllocations.find(
-      alloc => alloc.categoryId === categoryId
-    )?.allocatedAmount || 0;
+    if (newAmount < 0) {
+      setError("Cannot allocate negative amounts");
+      return;
+    }
+
+    const currentAllocation =
+      formData.categoryAllocations.find(
+        (alloc) => alloc.categoryId === categoryId,
+      )?.allocatedAmount || 0;
 
     const potentialTotal = totalAllocated - currentAllocation + newAmount;
 
-    if (potentialTotal <= formData.amount) {
-      setFormData((prev) => {
-        const updatedAllocations = prev.categoryAllocations.filter(
-          (alloc) => alloc.categoryId !== categoryId
-        );
-        if (newAmount > 0) {
-          updatedAllocations.push({ categoryId, allocatedAmount: newAmount });
-        }
-        return { ...prev, categoryAllocations: updatedAllocations };
-      });
+    if (potentialTotal > formData.amount) {
+      setError(
+        `Cannot allocate more than the total budget amount (${formatCurrency(formData.amount, user?.preferences.currency || "USD")})`,
+      );
+      return;
     }
+
+    setError(null);
+    setFormData((prev) => {
+      const updatedAllocations = prev.categoryAllocations.filter(
+        (alloc) => alloc.categoryId !== categoryId,
+      );
+      if (newAmount > 0) {
+        updatedAllocations.push({ categoryId, allocatedAmount: newAmount });
+      }
+      return { ...prev, categoryAllocations: updatedAllocations };
+    });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleBudgetAmountChange = (newAmount: number) => {
+    if (newAmount < totalAllocated) {
+      setError(
+        "Cannot set budget amount lower than current allocations. Please reduce category allocations first.",
+      );
+      return;
+    }
+    setError(null);
+    setFormData((prev) => ({ ...prev, amount: newAmount }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!budget) return;
+    if (!budget || !user?.id) return;
+
+    if (totalAllocated > formData.amount) {
+      setError(
+        "Total allocations exceed budget amount. Please adjust allocations.",
+      );
+      return;
+    }
 
     try {
       setLoading(true);
-      await updateBudget(budget.id, {
-        ...formData,
-      });
+      setError(null);
+      await updateBudget(
+        user?.id,
+        budget.id,
+        // @ts-expect-error - Type mismatch in formData
+        {
+          ...formData,
+          period: formData.period as BudgetPeriod,
+        },
+      );
       onSave();
       onClose();
     } catch (err) {
       console.error("Error updating budget:", err);
+      setError("Failed to update budget. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -126,20 +171,34 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Edit Budget">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <Alert
+            variant="error"
+            title="Failed to update budget"
+            icon={<AlertCircle className="w-5 h-5" />}
+          >
+            {error}
+          </Alert>
+        )}
+
         {/* Main Budget Information */}
         <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-xl p-4 md:p-6 space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <DollarSign className="h-5 w-5 text-indigo-600" />
-            <h3 className="text-lg font-semibold text-indigo-900">Budget Details</h3>
+            <h3 className="text-lg font-semibold text-indigo-900">
+              Budget Details
+            </h3>
           </div>
-          
+
           {/* Budget Name */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Budget Name</label>
             <Input
               type="text"
+              label="Budget Name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               required
               className="w-full border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
               placeholder="e.g., Monthly Expenses"
@@ -149,14 +208,17 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
           {/* Amount and Period */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">Amount</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <Input
                   type="number"
                   step="0.01"
+                  min={totalAllocated}
+                  label="Budget Amount"
+                  icon={<DollarSign className="h-5 w-5 text-gray-500" />}
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    handleBudgetAmountChange(parseFloat(e.target.value))
+                  }
                   required
                   className="w-full pl-8 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
                   placeholder="0.00"
@@ -165,10 +227,14 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">Period</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Period
+              </label>
               <Select
                 value={formData.period}
-                onValueChange={(value) => setFormData({ ...formData, period: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, period: value })
+                }
               >
                 <SelectTrigger className="w-full border-indigo-200">
                   <SelectValue placeholder="Select period" />
@@ -185,105 +251,90 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
             </div>
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <Input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                required
-                className="w-full border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
-              />
+          {/* Category Allocations */}
+          <div className="bg-white rounded-xl shadow-md mt-6">
+            <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl">
+              <h3 className="text-lg font-semibold text-teal-900">
+                Category Allocations
+              </h3>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <Input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-        </div>
+            <div className="max-h-48 sm:max-h-64 overflow-y-auto p-4 space-y-2">
+              {categories.map((category) => {
+                const currentAllocation =
+                  formData.categoryAllocations.find(
+                    (alloc) => alloc.categoryId === category.id,
+                  )?.allocatedAmount || 0;
+                const maxAllocation = currentAllocation + remainingAmount;
 
-        {/* Category Allocations */}
-        <div className="bg-white rounded-xl shadow-md">
-          <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-xl border border-gray-200">
-            <h3 className="text-lg font-semibold text-teal-900">Category Allocations</h3>
-          </div>
-
-          <div className="max-h-48 sm:max-h-64 overflow-y-auto p-2 space-y-1">
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-2 hover:bg-gray-50 transition-colors"
-              >
-                <span className="text-sm font-medium text-gray-800">{category.name}</span>
-                <div className="relative w-32">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    defaultValue={
-                      formData.categoryAllocations.find((alloc) => alloc.categoryId === category.id)
-                        ?.allocatedAmount || 0
-                    }
-                    className="w-full pl-8 text-right border-gray-200 focus:border-teal-500 focus:ring-teal-500"
-                    onChange={(e) =>
-                      handleCategoryAllocation(category.id, parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Allocation Summary */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl">
-              <p className="text-sm text-teal-600 mt-1">
-                {isFullyAllocated 
-                  ? "Budget fully allocated. Adjust existing allocations to make changes."
-                  : "Distribute your budget across categories"}
-              </p>
-            </div>
-
-            <div className="border-t border-gray-200 p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-b-xl">
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <span className="text-sm text-teal-900">Total Allocated:</span>
-                  <span className="text-lg font-semibold text-teal-900">
-                    {formatCurrency(totalAllocated)}
-                    <span className="text-sm font-normal text-teal-700 ml-2">
-                      ({allocationPercentage}% of budget)
+                return (
+                  <div
+                    key={category.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-sm font-medium text-gray-800">
+                      {category.name}
                     </span>
+                    <div className="relative w-32">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={maxAllocation}
+                        value={currentAllocation}
+                        placeholder="0.00"
+                        className="w-full pl-8 text-right border-gray-200 focus:border-teal-500 focus:ring-teal-500"
+                        onChange={(e) =>
+                          handleCategoryAllocation(
+                            category.id,
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Enhanced allocation progress */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">
+                    Allocation Progress
                   </span>
                 </div>
-                
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <span className="text-sm text-teal-900">Remaining Amount:</span>
-                  <span className={`text-lg font-semibold ${remainingAmount >= 0 ? 'text-teal-900' : 'text-red-600'}`}>
-                    {formatCurrency(Math.abs(remainingAmount))}
-                    <span className="text-sm font-normal ml-2">
-                      ({remainingAmount >= 0 ? 'available' : 'over budget'})
-                    </span>
+                <ProgressBar
+                  value={Math.min(Number(allocationPercentage), 100)}
+                  variant={
+                    Number(allocationPercentage) === 100
+                      ? "success"
+                      : Number(allocationPercentage) > 100
+                        ? "danger"
+                        : "info"
+                  }
+                  showPercentage
+                  animated={Number(allocationPercentage) < 100}
+                />
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">
+                    Allocated:{" "}
+                    {formatCurrency(
+                      totalAllocated,
+                      user?.preferences.currency || "USD",
+                    )}
                   </span>
-                </div>
-
-                <div className="w-full bg-teal-200 rounded-full h-2.5">
-                  <div 
-                    className={`h-2.5 rounded-full ${
-                      remainingAmount >= 0 ? 'bg-teal-600' : 'bg-red-600'
-                    }`}
-                    style={{ 
-                      width: `${Math.min(Number(allocationPercentage), 100)}%`,
-                    }}
-                  ></div>
+                  <span className="text-gray-600">
+                    Remaining:{" "}
+                    {formatCurrency(
+                      Math.abs(remainingAmount),
+                      user?.preferences.currency || "USD",
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -297,14 +348,14 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="w-full sm:w-auto border-gray-300 hover:bg-gray-50"
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            disabled={loading}
-            className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800"
+          <Button
+            type="submit"
+            disabled={loading || totalAllocated > formData.amount}
+            className="w-full sm:w-auto"
           >
             {loading ? (
               "Saving Changes..."

@@ -1,326 +1,446 @@
+// src/services/userService.ts
 import {
   doc,
   getDoc,
   updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+  serverTimestamp,
+  increment,
   writeBatch,
+  collection,
+  getDocs,
+  FieldValue,
 } from "firebase/firestore";
+import { createDefaultCategories } from "./categoryDefaults";
 import { db } from "../config/firebase";
-import type {
-  User,
-  UserInput,
-  Account,
-  Transaction,
-  Category,
-  Budget,
+import {
+  type User,
+  type UserInput,
+  type UserStats,
+  type UserPreferences,
+  type ApiResponse,
+  type Category,
+  CollectionPaths,
 } from "../types";
 
-export const getUser = async (
-  userId: string,
-  includeRelations: boolean = false
-): Promise<User | null> => {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
+const DEFAULT_USER_STATS: UserStats = {
+  totalAccounts: 0,
+  totalTransactions: 0,
+  totalCategories: 16,
+  totalBudgets: 0,
+  lastActive: new Date().toISOString(),
+  signupDate: new Date().toISOString(),
+  monthlySpending: 0,
+  monthlyIncome: 0,
+  savingsRate: 0,
+  lastCalculated: serverTimestamp(),
+};
 
-  if (!userSnap.exists()) {
-    return null;
-  }
+/**
+ * Creates a new user document in Firestore
+ */
+export const createUser = async (
+  userInput: UserInput & { id: string },
+): Promise<User> => {
+  try {
+    // Start a batch write
+    const batch = writeBatch(db);
+    const userRef = doc(db, "users", userInput.id);
 
-  const userData = userSnap.data() as User;
+    const newUser: User = {
+      id: userInput.id,
+      email: userInput.email,
+      firstName: userInput.firstName,
+      lastName: userInput.lastName,
+      preferences: {
+        currency: userInput.preferences.currency,
+        dateFormat: userInput.preferences.dateFormat,
+        budgetStartDay: userInput.preferences.budgetStartDay,
+        weekStartDay: userInput.preferences.weekStartDay,
+      },
+      stats: DEFAULT_USER_STATS,
+      createdAt: serverTimestamp(),
+      isActive: true,
+    };
 
-  if (!includeRelations) {
+    // Add user document to batch
+    batch.set(userRef, newUser);
+
+    // Commit the batch
+    await batch.commit();
+
+    // Create default categories
+    await createDefaultCategories(userInput.id);
+
+    // Convert serverTimestamp back to string for frontend use
     return {
+      ...newUser,
+      createdAt: new Date().toISOString(),
+      stats: {
+        ...DEFAULT_USER_STATS,
+        lastCalculated: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw new Error("Failed to create user");
+  }
+};
+
+/**
+ * Retrieves a user document from Firestore
+ */
+export const getUser = async (userId: string): Promise<User | null> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      return null;
+    }
+
+    const userData = userSnap.data() as User;
+    return {
+      ...userData,
       id: userSnap.id,
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      currency: userData.currency,
+      createdAt: userData.createdAt.toString(),
+      updatedAt: userData.updatedAt?.toString(),
+      deletedAt: userData.deletedAt?.toString(),
+      stats: {
+        ...userData.stats,
+        lastCalculated: userData.stats.lastCalculated.toString(),
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    throw new Error("Failed to fetch user");
+  }
+};
+
+/**
+ * Updates a user's profile information
+ */
+export const updateUserProfile = async (
+  userId: string,
+  updates: Partial<UserInput>,
+): Promise<ApiResponse<User>> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    const updateData = {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    };
+
+    await updateDoc(userRef, updateData);
+
+    const updatedUser = await getUser(userId);
+    if (!updatedUser) {
+      throw new Error("Failed to fetch updated user");
+    }
+
+    return {
+      status: 200,
+      data: updatedUser,
+      message: "User profile updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return {
+      status: 500,
+      error: "Failed to update user profile",
     };
   }
-
-  // Fetch related data
-  const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
-    await Promise.all([
-      getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
-      getDocs(
-        query(collection(db, "transactions"), where("userId", "==", userId))
-      ),
-      getDocs(
-        query(collection(db, "categories"), where("userId", "==", userId))
-      ),
-      getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
-    ]);
-
-  return {
-    id: userSnap.id,
-    email: userData.email,
-    firstName: userData.firstName,
-    lastName: userData.lastName,
-    currency: userData.currency,
-    accounts: accountsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Account)
-    ),
-    transactions: transactionsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Transaction)
-    ),
-    categories: categoriesSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Category)
-    ),
-    budgets: budgetsSnap.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as Budget)
-    ),
-  };
 };
 
-export const getUserByEmail = async (
-  email: string,
-  includeRelations: boolean = false
-): Promise<User | null> => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email));
-  const querySnapshot = await getDocs(q);
-
-  if (querySnapshot.empty) {
-    return null;
-  }
-
-  const userDoc = querySnapshot.docs[0];
-  return getUser(userDoc.id, includeRelations);
-};
-
-export const createUser = async (
-  userInput: UserInput & { id: string }
-): Promise<User> => {
-  const user: User = {
-    id: userInput.id,
-    email: userInput.email,
-    firstName: userInput.firstName,
-    lastName: userInput.lastName,
-    currency: userInput.currency,
-  };
-
-  const defaultCategories = [
-    // Income Categories
-    { name: "Salary", type: "INCOME", icon: "dollar", color: "#4CAF50" },
-    {
-      name: "Other Income",
-      type: "INCOME",
-      icon: "plus-circle",
-      color: "#8BC34A",
-    },
-    {
-      name: "Investments",
-      type: "INCOME",
-      icon: "trending-up",
-      color: "#66BB6A",
-    },
-    { name: "Freelance", type: "INCOME", icon: "briefcase", color: "#81C784" },
-    { name: "Rental Income", type: "INCOME", icon: "home", color: "#A5D6A7" },
-
-    // Essential Expenses
-    {
-      name: "Food & Dining",
-      type: "EXPENSE",
-      icon: "coffee",
-      color: "#FF5722",
-    },
-    {
-      name: "Groceries",
-      type: "EXPENSE",
-      icon: "shopping-cart",
-      color: "#FF7043",
-    },
-    { name: "Transportation", type: "EXPENSE", icon: "car", color: "#2196F3" },
-    {
-      name: "Bills & Utilities",
-      type: "EXPENSE",
-      icon: "file-text",
-      color: "#607D8B",
-    },
-    { name: "Rent/Mortgage", type: "EXPENSE", icon: "home", color: "#455A64" },
-
-    // Lifestyle & Shopping
-    {
-      name: "Shopping",
-      type: "EXPENSE",
-      icon: "shopping-bag",
-      color: "#9C27B0",
-    },
-    { name: "Entertainment", type: "EXPENSE", icon: "film", color: "#E91E63" },
-    {
-      name: "Health & Fitness",
-      type: "EXPENSE",
-      icon: "heart",
-      color: "#F44336",
-    },
-    { name: "Personal Care", type: "EXPENSE", icon: "user", color: "#EC407A" },
-
-    // Services & Education
-    { name: "Education", type: "EXPENSE", icon: "book", color: "#3F51B5" },
-    {
-      name: "Subscriptions",
-      type: "EXPENSE",
-      icon: "repeat",
-      color: "#5C6BC0",
-    },
-    { name: "Insurance", type: "EXPENSE", icon: "shield", color: "#7986CB" },
-
-    // Savings & Investments
-    { name: "Savings", type: "EXPENSE", icon: "piggy-bank", color: "#009688" },
-    {
-      name: "Investments",
-      type: "EXPENSE",
-      icon: "bar-chart",
-      color: "#26A69A",
-    },
-    {
-      name: "Debt Payment",
-      type: "EXPENSE",
-      icon: "credit-card",
-      color: "#4DB6AC",
-    },
-
-    // Miscellaneous
-    {
-      name: "Gifts & Donations",
-      type: "EXPENSE",
-      icon: "gift",
-      color: "#FFC107",
-    },
-    { name: "Travel", type: "EXPENSE", icon: "plane", color: "#00BCD4" },
-    {
-      name: "Others",
-      type: "EXPENSE",
-      icon: "more-horizontal",
-      color: "#9E9E9E",
-    },
-  ];
-
-  const batch = writeBatch(db);
-
-  // Write the user document
-  const userDocRef = doc(db, "users", user.id);
-  batch.set(userDocRef, {
-    ...user,
-    createdAt: new Date().toISOString(),
-  });
-
-  // Write default categories with userId
-  defaultCategories.forEach((category) => {
-    const categoryDocRef = doc(collection(db, "categories"));
-    batch.set(categoryDocRef, {
-      ...category,
-      userId: user.id, // Ensure userId is set
-      isDefault: true,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    });
-  });
-
-  await batch.commit();
-  return user;
-};
-
-
-export const updateUser = async (
+/**
+ * Updates user preferences
+ */
+export const updateUserPreferences = async (
   userId: string,
-  updates: Partial<UserInput>
-): Promise<void> => {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
+  preferences: Partial<UserPreferences>,
+): Promise<ApiResponse<UserPreferences>> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
 
-  if (!userSnap.exists()) {
-    throw new Error("User not found");
+    if (!userSnap.exists()) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    const currentPrefs = userSnap.data()?.preferences || {};
+
+    await updateDoc(userRef, {
+      preferences: {
+        ...currentPrefs,
+        ...preferences,
+      },
+      updatedAt: serverTimestamp(),
+    });
+
+    const updatedUser = await getUser(userId);
+    if (!updatedUser) {
+      throw new Error("Failed to fetch updated user preferences");
+    }
+
+    return {
+      status: 200,
+      data: updatedUser.preferences,
+      message: "User preferences updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating user preferences:", error);
+    return {
+      status: 500,
+      error: "Failed to update user preferences",
+    };
   }
-
-  await updateDoc(userRef, {
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  });
 };
 
-export const deleteUser = async (userId: string): Promise<void> => {
-  // Get all user's data
-  const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
-    await Promise.all([
-      getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
-      getDocs(
-        query(collection(db, "transactions"), where("userId", "==", userId))
-      ),
-      getDocs(
-        query(collection(db, "categories"), where("userId", "==", userId))
-      ),
-      getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
-    ]);
+/**
+ * Updates user statistics
+ */
+export const updateUserStats = async (
+  userId: string,
+  statsUpdate: Partial<UserStats>,
+): Promise<ApiResponse<UserStats>> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
 
-  // Delete all related data
-  const batch = writeBatch(db);
+    if (!userSnap.exists()) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
 
-  accountsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+    const updates: Record<string, FieldValue | number | string> = {
+      updatedAt: serverTimestamp(),
+      "stats.lastCalculated": serverTimestamp(),
+    };
 
-  transactionsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+    // Handle atomic updates for numerical fields
+    if (typeof statsUpdate.totalAccounts === "number") {
+      updates["stats.totalAccounts"] = increment(statsUpdate.totalAccounts);
+    }
+    if (typeof statsUpdate.totalTransactions === "number") {
+      updates["stats.totalTransactions"] = increment(
+        statsUpdate.totalTransactions,
+      );
+    }
+    if (typeof statsUpdate.totalCategories === "number") {
+      updates["stats.totalCategories"] = increment(statsUpdate.totalCategories);
+    }
+    if (typeof statsUpdate.totalBudgets === "number") {
+      updates["stats.totalBudgets"] = increment(statsUpdate.totalBudgets);
+    }
 
-  categoriesSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+    // Handle direct updates for other fields
+    if (statsUpdate.monthlySpending !== undefined) {
+      updates["stats.monthlySpending"] = statsUpdate.monthlySpending;
+    }
+    if (statsUpdate.monthlyIncome !== undefined) {
+      updates["stats.monthlyIncome"] = statsUpdate.monthlyIncome;
+    }
+    if (statsUpdate.savingsRate !== undefined) {
+      updates["stats.savingsRate"] = statsUpdate.savingsRate;
+    }
+    if (statsUpdate.lastActive) {
+      updates["stats.lastActive"] = statsUpdate.lastActive;
+    }
 
-  budgetsSnap.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
+    await updateDoc(userRef, updates);
 
-  // Delete user document
-  batch.delete(doc(db, "users", userId));
+    const updatedUser = await getUser(userId);
+    if (!updatedUser) {
+      throw new Error("Failed to fetch updated user stats");
+    }
 
-  await batch.commit();
+    return {
+      status: 200,
+      data: updatedUser.stats,
+      message: "User stats updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating user stats:", error);
+    return {
+      status: 500,
+      error: "Failed to update user stats",
+    };
+  }
 };
 
-export const getUserStats = async (
-  userId: string
-): Promise<{
-  totalAccounts: number;
-  totalTransactions: number;
-  totalCategories: number;
-  totalBudgets: number;
-}> => {
-  const [accountsSnap, transactionsSnap, categoriesSnap, budgetsSnap] =
-    await Promise.all([
-      getDocs(query(collection(db, "accounts"), where("userId", "==", userId))),
-      getDocs(
-        query(collection(db, "transactions"), where("userId", "==", userId))
-      ),
-      getDocs(
-        query(collection(db, "categories"), where("userId", "==", userId))
-      ),
-      getDocs(query(collection(db, "budgets"), where("userId", "==", userId))),
-    ]);
+/**
+ * Deactivates a user account (soft delete)
+ */
+export const deactivateUser = async (
+  userId: string,
+): Promise<ApiResponse<void>> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
 
-  return {
-    totalAccounts: accountsSnap.size,
-    totalTransactions: transactionsSnap.size,
-    totalCategories: categoriesSnap.size,
-    totalBudgets: budgetsSnap.size,
-  };
+    if (!userSnap.exists()) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    await updateDoc(userRef, {
+      isActive: false,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      status: 200,
+      message: "User deactivated successfully",
+    };
+  } catch (error) {
+    console.error("Error deactivating user:", error);
+    return {
+      status: 500,
+      error: "Failed to deactivate user",
+    };
+  }
+};
+
+/**
+ * Reactivates a previously deactivated user account
+ */
+export const reactivateUser = async (
+  userId: string,
+): Promise<ApiResponse<User>> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    await updateDoc(userRef, {
+      isActive: true,
+      deletedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+
+    const updatedUser = await getUser(userId);
+    if (!updatedUser) {
+      throw new Error("Failed to fetch reactivated user");
+    }
+
+    return {
+      status: 200,
+      data: updatedUser,
+      message: "User reactivated successfully",
+    };
+  } catch (error) {
+    console.error("Error reactivating user:", error);
+    return {
+      status: 500,
+      error: "Failed to reactivate user",
+    };
+  }
+};
+// get the categories
+/**
+ * Retrieves a list of categories for the specified user
+ * @param userId - The ID of the user
+ * @param options - Optional filtering parameters
+ * @returns ApiResponse containing an array of categories
+ */
+export const getCategories = async (
+  userId: string,
+): Promise<ApiResponse<Category[]>> => {
+  try {
+    const docSnap = await getDocs(
+      collection(db, CollectionPaths.categories(userId)),
+    );
+    const categories: Category[] = [];
+    docSnap.forEach((doc) => {
+      const categoryData = doc.data() as Category;
+      categories.push({
+        ...categoryData,
+        id: doc.id,
+        createdAt: categoryData.createdAt.toString(),
+        updatedAt: categoryData.updatedAt?.toString(),
+        deletedAt: categoryData.deletedAt?.toString(),
+      });
+    });
+    return {
+      status: 200,
+      data: categories,
+      message: `Retrieved ${categories.length} categories successfully`,
+    };
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    return {
+      status: 500,
+      error: "Failed to fetch categories",
+    };
+  }
+};
+
+// get categories for given ids
+/**
+ * Retrieves a list of categories for the specified user
+ * @param userId - The ID of the user
+ * @param categoryIds - An array of category IDs to fetch
+ * @returns ApiResponse containing an array of categories
+ */
+export const getCategoriesByIds = async (
+  userId: string,
+  categoryIds: string[],
+): Promise<ApiResponse<Category[]>> => {
+  try {
+    const categories: Category[] = [];
+
+    for (const categoryId of categoryIds) {
+      const categoryRef = doc(
+        db,
+        CollectionPaths.categories(userId),
+        categoryId,
+      );
+      const categorySnap = await getDoc(categoryRef);
+
+      if (categorySnap.exists()) {
+        const categoryData = categorySnap.data() as Category;
+        categories.push({
+          ...categoryData,
+          id: categorySnap.id,
+          createdAt: categoryData.createdAt.toString(),
+          updatedAt: categoryData.updatedAt?.toString(),
+          deletedAt: categoryData.deletedAt?.toString(),
+        });
+      }
+    }
+
+    return {
+      status: 200,
+      data: categories,
+      message: `Retrieved ${categories.length} categories successfully`,
+    };
+  } catch (error) {
+    console.error("Error fetching categories by IDs:", error);
+    return {
+      status: 500,
+      error: "Failed to fetch categories by IDs",
+    };
+  }
 };

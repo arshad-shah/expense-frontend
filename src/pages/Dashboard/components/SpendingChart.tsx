@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -7,11 +7,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
-import { useAuth } from '@/contexts/AuthContext';
-import { getTransactions } from '@/services/TransactionService';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import type { Transaction } from '@/types';
+} from "recharts";
+import { useAuth } from "@/contexts/AuthContext";
+import { getTransactions } from "@/services/TransactionService";
+import type { Transaction, TransactionFilters } from "@/types";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface MonthlySpending {
   month: string;
@@ -19,85 +19,106 @@ interface MonthlySpending {
   income: number;
 }
 
-const SpendingChart: React.FC = () => {
+const SpendingChart = () => {
   const [data, setData] = useState<MonthlySpending[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { user } = useAuth();
 
-    const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.currency || 'USD',
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: user?.preferences.currency || "USD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
-  
-  // Calculate total spending and income
-  const totals = data.reduce((acc, curr) => ({
-    spending: acc.spending + curr.spending,
-    income: acc.income + curr.income
-  }), { spending: 0, income: 0 });
 
   useEffect(() => {
-    const fetchTransactions = async () => {
+    const fetchData = async () => {
       if (!user?.id) return;
 
       try {
         setLoading(true);
+        setError("");
+
+        // Calculate date range for last 6 months
         const now = new Date();
         const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        
-        const transactions = await getTransactions({
+
+        // Prepare filters
+        const filters: TransactionFilters = {
           dateRange: {
             startDate: sixMonthsAgo.toISOString(),
-            endDate: now.toISOString()
-          }
-        });
+            endDate: now.toISOString(),
+          },
+        };
 
-        const monthlyData = processTransactions(transactions);
+        // Fetch transactions
+        const response = await getTransactions(user.id, filters, 1, 1000);
+
+        if (response.status !== 200 || !response.data) {
+          throw new Error(response.error || "Failed to fetch transactions");
+        }
+
+        const monthlyData = processTransactions(response.data.items);
         setData(monthlyData);
       } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('Failed to load spending data');
+        console.error("Error fetching data:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load spending data",
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTransactions();
+    fetchData();
   }, [user]);
 
-  const processTransactions = (transactions: Transaction[]): MonthlySpending[] => {
-    const monthlyTotals = new Map<string, { spending: number; income: number }>();
+  const processTransactions = (
+    transactions: Transaction[],
+  ): MonthlySpending[] => {
+    const monthlyTotals = new Map<
+      string,
+      { spending: number; income: number }
+    >();
     const months = [];
-    
+
+    // Initialize last 6 months
     for (let i = 0; i < 6; i++) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
-      const monthKey = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      const monthKey = date.toLocaleString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
       months.unshift(monthKey);
       monthlyTotals.set(monthKey, { spending: 0, income: 0 });
     }
 
-    transactions.forEach(transaction => {
+    // Process transactions
+    transactions.forEach((transaction) => {
       const date = new Date(transaction.transactionDate);
-      const monthKey = date.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-      
+      const monthKey = date.toLocaleString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
+
       if (monthlyTotals.has(monthKey)) {
         const currentTotals = monthlyTotals.get(monthKey)!;
-        if (transaction.type === 'EXPENSE') {
+        if (transaction.type === "EXPENSE") {
           currentTotals.spending += transaction.amount;
-        } else if (transaction.type === 'INCOME') {
+        } else if (transaction.type === "INCOME") {
           currentTotals.income += transaction.amount;
         }
       }
     });
 
-    return months.map(month => ({
+    // Convert to array format
+    return months.map((month) => ({
       month,
-      ...monthlyTotals.get(month)!
+      ...monthlyTotals.get(month)!,
     }));
   };
 
@@ -105,8 +126,11 @@ const SpendingChart: React.FC = () => {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex flex-col space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Spending Trends</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Spending Trends
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
             <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
             <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
           </div>
@@ -142,7 +166,7 @@ const SpendingChart: React.FC = () => {
             <div className="flex items-center space-x-2">
               <ArrowUpRight className="h-4 w-4 text-emerald-600" />
               <p className="text-emerald-600">
-                Income:  {formatCurrency(payload[1].value)}
+                Income: {formatCurrency(payload[1].value)}
               </p>
             </div>
           </div>
@@ -152,39 +176,11 @@ const SpendingChart: React.FC = () => {
     return null;
   };
 
-  const CustomLegend = () => {
-    return (
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-indigo-50 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-1">
-            <div className="h-3 w-3 rounded-full bg-indigo-600"></div>
-            <span className="text-sm font-medium text-gray-600">Total Spending</span>
-          </div>
-          <p className="text-lg font-semibold text-gray-900">
-            {formatCurrency(totals.spending)}
-          </p>
-        </div>
-        <div className="bg-emerald-50 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-1">
-            <div className="h-3 w-3 rounded-full bg-emerald-600"></div>
-            <span className="text-sm font-medium text-gray-600">Total Income</span>
-          </div>
-          <p className="text-lg font-semibold text-gray-900">
-            {formatCurrency(totals.income)}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-      <h2 className="text-lg font-semibold text-gray-900 mb-6">Spending Trends</h2>
-      
-      {/* Custom Legend with Totals */}
-      <CustomLegend />
-      
-      {/* Chart */}
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">
+        Spending Trends
+      </h2>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -193,59 +189,59 @@ const SpendingChart: React.FC = () => {
           >
             <defs>
               <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#059669" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#059669" stopOpacity={0.1} />
+                <stop offset="95%" stopColor="#059669" stopOpacity={0} />
               </linearGradient>
             </defs>
-            
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="#f1f5f9" 
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#f1f5f9"
               vertical={false}
             />
-            
-            <XAxis 
-              dataKey="month" 
+
+            <XAxis
+              dataKey="month"
               stroke="#64748b"
               fontSize={12}
               tickLine={false}
               axisLine={false}
             />
-            
-            <YAxis 
+
+            <YAxis
               stroke="#64748b"
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter= {(value) => formatCurrency(value)}
+              tickFormatter={(value) => formatCurrency(value)}
             />
-            
-            <Tooltip 
+
+            <Tooltip
               content={<CustomTooltip />}
-              cursor={{ stroke: '#e2e8f0' }}
+              cursor={{ stroke: "#e2e8f0" }}
             />
-            
-            <Line 
-              type="monotone" 
-              dataKey="spending" 
+
+            <Line
+              type="monotone"
+              dataKey="spending"
               stroke="#4f46e5"
               strokeWidth={2.5}
-              dot={{ fill: '#4f46e5', strokeWidth: 2, stroke: '#fff', r: 4 }}
+              dot={{ fill: "#4f46e5", strokeWidth: 2, stroke: "#fff", r: 4 }}
               activeDot={{ r: 6, strokeWidth: 2 }}
               name="Spending"
               fill="url(#spendingGradient)"
             />
-            
-            <Line 
-              type="monotone" 
-              dataKey="income" 
+
+            <Line
+              type="monotone"
+              dataKey="income"
               stroke="#059669"
               strokeWidth={2.5}
-              dot={{ fill: '#059669', strokeWidth: 2, stroke: '#fff', r: 4 }}
+              dot={{ fill: "#059669", strokeWidth: 2, stroke: "#fff", r: 4 }}
               activeDot={{ r: 6, strokeWidth: 2 }}
               name="Income"
               fill="url(#incomeGradient)"

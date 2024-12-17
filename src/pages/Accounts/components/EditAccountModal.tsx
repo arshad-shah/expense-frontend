@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save } from "lucide-react";
-import { Dialog } from "@/components/Dialog"; // Adjust path as needed
+import { Dialog } from "@/components/Dialog";
 import {
   Select,
   SelectContent,
@@ -11,8 +10,11 @@ import {
 } from "@/components/Select";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { Account, AccountInput, AccountType, Currency } from "@/types";
+import { Account, AccountInput, AccountType } from "@/types";
 import { updateAccount } from "@/services/AccountService";
+import { CURRENCY } from "@/constants";
+import Alert from "@/components/Alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EditAccountModalProps {
   isOpen: boolean;
@@ -27,12 +29,14 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
   account,
   onSave,
 }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<Omit<AccountInput, "userId">>({
     name: "",
     accountType: "CHECKING",
     bankName: "",
     balance: 0,
     currency: "USD",
+    metadata: {}
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,16 +49,15 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
     "INVESTMENT",
   ];
 
-  const currencies: Currency[] = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CNY"];
-
   useEffect(() => {
     if (account) {
       setFormData({
         name: account.name,
-        accountType: account.accountType as AccountType,
+        accountType: account.accountType,
         bankName: account.bankName,
         balance: account.balance,
-        currency: account.currency as Currency,
+        currency: account.currency,
+        metadata: account.metadata || {}
       });
     }
   }, [account]);
@@ -68,20 +71,35 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!account) return;
+    if (!account || !user?.id) return;
+
+    setError("");
+    setLoading(true);
 
     try {
-      setError("");
-      setLoading(true);
-      await updateAccount(account.id, { ...formData });
-      onSave();
-      onClose();
+      const response = await updateAccount(user.id, account.id, formData);
+      
+      if (response.status === 200) {
+        onSave();
+        onClose();
+      } else {
+        setError(response.error || "Failed to save account changes.");
+      }
     } catch (err) {
-      setError("Failed to save account changes.");
-      console.error(err);
+      console.error("Error updating account:", err);
+      setError("An unexpected error occurred while saving changes.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAccountTypeChange = (value: string) => {
+    // Reset balance for credit cards
+    setFormData(prev => ({
+      ...prev,
+      accountType: value as AccountType,
+      balance: value === "CREDIT_CARD" ? 0 : prev.balance
+    }));
   };
 
   return (
@@ -89,35 +107,36 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+          <Alert 
+            variant="error" 
+            title="Error" 
+            onDismiss={() => setError("")}
+          >
             {error}
-          </div>
+          </Alert>
         )}
 
         {/* Account Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Account Name
-          </label>
           <Input
             type="text"
+            label="Account Name"
             value={formData.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
             required
             placeholder="Enter account name"
+            disabled={loading}
           />
         </div>
 
         {/* Account Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Account Type
-          </label>
+
           <Select
             value={formData.accountType}
-            onValueChange={(value) => handleInputChange("accountType", value)}
+            onValueChange={handleAccountTypeChange}
+            disabled={loading}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger label="Account Type" className="w-full">
               <SelectValue placeholder="Select account type" />
             </SelectTrigger>
             <SelectContent>
@@ -130,77 +149,75 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Bank Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Bank Name
-          </label>
+
           <Input
             type="text"
+            label="Bank Name"
             value={formData.bankName}
             onChange={(e) => handleInputChange("bankName", e.target.value)}
             required
             placeholder="Enter bank name"
+            disabled={loading}
           />
-        </div>
 
         {/* Balance and Currency */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Balance
-            </label>
             <Input
               type="number"
+              label="Balance"
               value={formData.balance}
               onChange={(e) => handleInputChange("balance", e.target.value)}
               step="0.01"
               required
               placeholder="Enter balance"
+              disabled={loading || formData.accountType === "CREDIT_CARD"}
             />
-          </div>
+            {formData.accountType === "CREDIT_CARD" && (
+              <p className="mt-1 text-sm text-gray-500">
+                Credit card accounts have a zero base balance
+              </p>
+            )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Currency
-            </label>
             <Select
               value={formData.currency}
               onValueChange={(value) => handleInputChange("currency", value)}
+              disabled={loading}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger label="Currency" className="w-full">
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency} value={currency}>
-                      {currency}
+                  {CURRENCY.map((currency) => (
+                    <SelectItem key={currency.label} value={currency.value}>
+                      {currency.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </div>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={loading}>
             {loading ? (
               <>
-                <Save className="mr-2 h-4 w-4" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
+                Save
               </>
             )}
           </Button>

@@ -12,30 +12,33 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { createTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccounts, updateAccount } from "@/services/AccountService";
-import { getCategories } from "@/services/CategoryService";
-import type { Account, Category } from "@/types";
+import { updateAccount } from "@/services/AccountService";
+import type { Account, Category, TransactionType } from "@/types";
+import { getCategories } from "@/services/userService";
+import Alert from "@/components/Alert";
 
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTransactionAdded: () => void;
+  accounts: Account[];
 }
 
 const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onTransactionAdded,
+  accounts: initialAccounts,
 }) => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     accountId: "",
     categoryId: "",
     amount: 0,
-    type: "EXPENSE",
+    type: "EXPENSE" as TransactionType,
     description: "",
     transactionDate: new Date().toISOString().split("T")[0],
   });
@@ -44,22 +47,22 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     const fetchData = async () => {
       if (user) {
         try {
-          const [fetchedAccounts, fetchedCategories] = await Promise.all([
-            getAccounts(user.id),
+          const [fetchedCategories] = await Promise.all([
             getCategories(user.id),
           ]);
-          setAccounts(fetchedAccounts);
-          setCategories(fetchedCategories);
-
+          if (fetchedCategories.data) {
+            setCategories(fetchedCategories.data);
+          }
           // Set default account if available
-          if (fetchedAccounts.length > 0) {
+          if (initialAccounts.length > 0) {
             setFormData((prev) => ({
               ...prev,
-              accountId: fetchedAccounts[0].id,
+              accountId: initialAccounts[0].id,
             }));
           }
         } catch (error) {
           console.error("Error fetching data:", error);
+          setError("Error fetching data. Please try again.");
         }
       }
     };
@@ -72,7 +75,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
     try {
       // Find the selected account
-      const selectedAccount = accounts.find(
+      const selectedAccount = initialAccounts.find(
         (account) => account.id === formData.accountId
       );
 
@@ -90,20 +93,34 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       }
 
       // Proceed with creating the transaction
-      await createTransaction({
-        ...formData,
-        userId: user?.id as string,
-      });
+      if (user?.id) {
+        await createTransaction(user.id, {
+          ...formData,
+          userId: user.id,
+          isRecurring: false, // or set this based on your logic
+          metadata: {}, // or set this based on your logic
+          categoryName: categories.find(category => category.id === formData.categoryId)?.name || "",
+          accountName: initialAccounts.find(account => account.id === formData.accountId)?.name || "",
+        });
+      } else {
+        console.error("User ID is undefined");
+      }
 
       // make sure we remove the amount from the account balance
       if (formData.type === "EXPENSE") {
-        await updateAccount(selectedAccount.id, {
-          balance: selectedAccount.balance - formData.amount,
-        });
+        if (user?.id) {
+          await updateAccount(user.id, selectedAccount.id, {
+            balance: selectedAccount.balance - formData.amount,
+          });
+        }
       } else {
-        await updateAccount(selectedAccount.id, {
-          balance: selectedAccount.balance + formData.amount,
-        });
+        if (user?.id) {
+          await updateAccount(user.id, selectedAccount.id, {
+            balance: selectedAccount.balance + formData.amount,
+          });
+        } else {
+          console.error("User ID is undefined");
+        }
       }
 
       onTransactionAdded();
@@ -111,7 +128,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
       // Reset form
       setFormData({
-        accountId: accounts[0]?.id || "",
+        accountId: initialAccounts[0]?.id || "",
         categoryId: "",
         amount: 0,
         type: "EXPENSE",
@@ -128,20 +145,23 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Add New Transaction">
+      {error && (
+        <Alert variant="error" onDismiss={() => setError("")}>
+          {error}
+        </Alert>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
       {/* Account Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Account</label>
         <Select
           value={formData.accountId}
           onValueChange={(value) => setFormData({ ...formData, accountId: value })}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger label="Account" className="w-full">
             <SelectValue placeholder="Select account" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {accounts.map((account) => (
+              {initialAccounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name} (Balance: ${account.balance.toFixed(2)})
                 </SelectItem>
@@ -152,24 +172,21 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         {/* Warning */}
         {formData.type === "EXPENSE" && formData.amount > 0 && (
           <p className="text-sm text-red-600 mt-1">
-            {accounts && accounts.find((acc) => acc.id === formData.accountId)?.balance !== undefined &&
-              accounts.find((acc) => acc.id === formData.accountId)!.balance < formData.amount &&
+            {initialAccounts && initialAccounts.find((acc) => acc.id === formData.accountId)?.balance !== undefined &&
+              initialAccounts.find((acc) => acc.id === formData.accountId)!.balance < formData.amount &&
               `Insufficient funds! The available balance is ${
-                accounts.find((acc) => acc.id === formData.accountId)!.balance.toFixed(2)
+                initialAccounts.find((acc) => acc.id === formData.accountId)!.balance.toFixed(2)
               }.`}
           </p>
         )}
-      </div>
 
 
         {/* Transaction Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
           <Select
             value={formData.type}
-            onValueChange={(value) => setFormData({ ...formData, type: value, categoryId: "" })}
+            onValueChange={(value) => setFormData({ ...formData, type: value as TransactionType, categoryId: "" })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger label="Type" className="w-full">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -179,16 +196,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
           <Select
             value={formData.categoryId}
             onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger label="Category" className="w-full">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -203,45 +217,38 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
 
         {/* Amount Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
           <Input
             type="number"
             step="0.01"
+            label="Amount"
             value={formData.amount}
             onChange={(e) =>
               setFormData({ ...formData, amount: parseFloat(e.target.value) })
             }
             required
           />
-        </div>
 
         {/* Description Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
           <Input
             type="text"
+            label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             required
           />
-        </div>
 
         {/* Date Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Date</label>
           <Input
             type="date"
+            label="Transaction Date"
             value={formData.transactionDate}
             onChange={(e) =>
               setFormData({ ...formData, transactionDate: e.target.value })
             }
             required
           />
-        </div>
 
         {/* Actions */}
         <div className="flex justify-end space-x-2">

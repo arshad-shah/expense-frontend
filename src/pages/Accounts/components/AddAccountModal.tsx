@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { createAccount } from "../../../services/AccountService";
-import { Dialog } from "@/components/Dialog"; // Adjust the path if necessary
+import { Dialog } from "@/components/Dialog";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,9 @@ import {
 } from "@/components/Select";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import type { AccountInput } from "../../../types";
+import type { AccountInput, AccountType, Currency } from "../../../types";
+import Alert from "@/components/Alert";
+import { CURRENCY } from "@/constants";
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -20,45 +22,72 @@ interface AddAccountModalProps {
   onAccountAdded: () => void;
 }
 
+const DEFAULT_FORM_STATE: Omit<AccountInput, "userId"> = {
+  name: "",
+  accountType: "CHECKING",
+  bankName: "",
+  balance: 0,
+  currency: "USD",
+  metadata: {}
+};
+
 const AddAccountModal: React.FC<AddAccountModalProps> = ({
   isOpen,
   onClose,
   onAccountAdded,
 }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<AccountInput>({
-    name: "",
-    accountType: "CHECKING",
-    bankName: "",
-    balance: 0,
-    currency: "USD",
-    userId: "",
-  });
+  const [formData, setFormData] = useState<Omit<AccountInput, "userId">>(DEFAULT_FORM_STATE);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) {
+      setError("User not authenticated");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
     try {
-      if (user) {
-        await createAccount({
-          ...formData,
-          userId: user.id,
-        });
+      // Call the AccountService createAccount method
+      const response = await createAccount(user.id, {
+        ...formData,
+        userId: user.id
+      });
+
+      if (response.status === 201 && response.data) {
         onAccountAdded();
         onClose();
-        setFormData({
-          name: "",
-          accountType: "CHECKING",
-          bankName: "",
-          balance: 0,
-          currency: "USD",
-          userId: user.id,
-        });
+        // Reset form
+        setFormData(DEFAULT_FORM_STATE);
+      } else {
+        setError(response.error || "Failed to create account");
       }
     } catch (err) {
-      setError("Failed to create account");
       console.error("Error creating account:", err);
+      setError("An unexpected error occurred while creating the account");
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleAccountTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      accountType: value as AccountType,
+      // Reset balance for credit cards
+      balance: value === "CREDIT_CARD" ? 0 : prev.balance
+    }));
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      currency: value as Currency
+    }));
   };
 
   return (
@@ -66,9 +95,13 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+          <Alert 
+            variant="error" 
+            title="Error" 
+            onDismiss={() => setError("")}
+          >
             {error}
-          </div>
+          </Alert>
         )}
 
         {/* Account Name */}
@@ -79,9 +112,10 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           <Input
             type="text"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
             placeholder="Enter account name"
+            disabled={isSubmitting}
           />
         </div>
 
@@ -92,9 +126,8 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </label>
           <Select
             value={formData.accountType}
-            onValueChange={(value) =>
-              setFormData({ ...formData, accountType: value })
-            }
+            onValueChange={handleAccountTypeChange}
+            disabled={isSubmitting}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select account type" />
@@ -119,11 +152,10 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           <Input
             type="text"
             value={formData.bankName}
-            onChange={(e) =>
-              setFormData({ ...formData, bankName: e.target.value })
-            }
+            onChange={(e) => setFormData(prev => ({ ...prev, bankName: e.target.value }))}
             required
             placeholder="Enter bank name"
+            disabled={isSubmitting}
           />
         </div>
 
@@ -135,16 +167,20 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           <Input
             type="number"
             value={formData.balance}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                balance: parseFloat(e.target.value),
-              })
-            }
+            onChange={(e) => setFormData(prev => ({
+              ...prev,
+              balance: parseFloat(e.target.value) || 0
+            }))}
             required
             placeholder="Enter initial balance"
             step="0.01"
+            disabled={isSubmitting || formData.accountType === "CREDIT_CARD"}
           />
+          {formData.accountType === "CREDIT_CARD" && (
+            <p className="mt-1 text-sm text-gray-500">
+              Credit card accounts start with a zero balance
+            </p>
+          )}
         </div>
 
         {/* Currency */}
@@ -154,20 +190,19 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </label>
           <Select
             value={formData.currency}
-            onValueChange={(value) =>
-              setFormData({ ...formData, currency: value })
-            }
+            onValueChange={handleCurrencyChange}
+            disabled={isSubmitting}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="USD">USD - US Dollar</SelectItem>
-                <SelectItem value="EUR">EUR - Euro</SelectItem>
-                <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                {CURRENCY.map((currency) => (
+                  <SelectItem key={currency.label} value={currency.value}>
+                    {currency.label}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -179,12 +214,17 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
             type="button"
             variant="outline"
             onClick={onClose}
+            disabled={isSubmitting}
             className="px-4"
           >
             Cancel
           </Button>
-          <Button type="submit" className="px-4">
-            Add Account
+          <Button 
+            type="submit" 
+            className="px-4"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Adding Account..." : "Add Account"}
           </Button>
         </div>
       </form>
