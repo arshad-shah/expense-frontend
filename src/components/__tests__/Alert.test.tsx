@@ -169,7 +169,7 @@ describe("Alert Component", () => {
         </Alert>,
       );
 
-      const link = screen.getByRole("link", { name: /learn more/i });
+      const link = screen.getByRole("button", { name: /learn more/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "https://example.com");
       expect(link).toHaveAttribute("target", "_blank");
