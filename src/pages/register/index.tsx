@@ -151,7 +151,6 @@ const Register = () => {
                 placeholder="John"
                 value={formData.firstName}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<User className="h-5 w-5 text-gray-400" />}
               />
 
@@ -164,7 +163,6 @@ const Register = () => {
                 placeholder="Doe"
                 value={formData.lastName}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<User className="h-5 w-5 text-gray-400" />}
               />
             </div>
@@ -179,7 +177,6 @@ const Register = () => {
               placeholder="you@example.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
               icon={<Mail className="h-5 w-5 text-gray-400" />}
             />
 
@@ -219,7 +216,6 @@ const Register = () => {
                 onChange={handleInputChange}
                 onFocus={() => setPasswordFocus(true)}
                 onBlur={() => setPasswordFocus(false)}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
 
@@ -302,7 +298,6 @@ const Register = () => {
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
             </div>
