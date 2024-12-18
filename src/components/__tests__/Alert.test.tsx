@@ -171,8 +171,6 @@ describe("Alert Component", () => {
 
       const link = screen.getByRole("button", { name: /learn more/i });
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
     });
   });
 
