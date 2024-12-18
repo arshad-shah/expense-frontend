@@ -1,20 +1,20 @@
-import React, { createContext, useContext, useState } from 'react';
-import type { User, UserInput } from '@/types';
-import { vi } from 'vitest';
+import React, { createContext, useContext, useState } from "react";
+import type { User, UserInput } from "@/types";
+import { vi } from "vitest";
 
 // Mock user data
 export const mockUser: User = {
-  id: 'mock-user-id',
-  email: 'test@example.com',
-  firstName: 'Test',
-  lastName: 'User',
+  id: "mock-user-id",
+  email: "test@example.com",
+  firstName: "Test",
+  lastName: "User",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   preferences: {
-    currency: 'USD',
-    dateFormat: 'MM/DD/YYYY',
+    currency: "USD",
+    dateFormat: "MM/DD/YYYY",
     budgetStartDay: 1,
-    weekStartDay: 'monday',
+    weekStartDay: "monday",
   },
   stats: {
     totalAccounts: 3,
@@ -44,11 +44,11 @@ export const mockAuthFunctions = {
 // Create mock context value
 const createMockContextValue = (
   initialUser: User | null = null,
-  loading: boolean = false
+  loading: boolean = false,
 ) => ({
   user: initialUser,
   loading,
-  ...mockAuthFunctions
+  ...mockAuthFunctions,
 });
 
 // Create the mock context
@@ -66,27 +66,27 @@ export const MockAuthProvider: React.FC<MockAuthProviderProps> = ({
   children,
   initialUser = null,
   loading = false,
-  mockImplementations = {}
+  mockImplementations = {},
 }) => {
   const [user, setUser] = useState<User | null>(initialUser);
 
   // Default implementations
   const defaultImplementations = {
-    login: async (email: string, password: string, rememberMe?: boolean) => {
-      if (email === 'test@example.com' && password === 'password') {
+    login: async (email: string, password: string) => {
+      if (email === "test@example.com" && password === "password") {
         setUser(mockUser);
       } else {
-        throw new Error('Invalid credentials');
+        throw new Error("Invalid credentials");
       }
     },
-    loginWithGoogle: async (rememberMe?: boolean) => {
+    loginWithGoogle: async () => {
       setUser(mockUser);
     },
-    register: async (userInput: UserInput, password: string) => {
+    register: async (userInput: UserInput) => {
       const newUser: User = {
         ...mockUser,
         ...userInput,
-        id: 'new-mock-user-id',
+        id: "new-mock-user-id",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -96,8 +96,8 @@ export const MockAuthProvider: React.FC<MockAuthProviderProps> = ({
       setUser(null);
     },
     resetPassword: async (email: string) => {
-      if (!email.includes('@')) {
-        throw new Error('Invalid email');
+      if (!email.includes("@")) {
+        throw new Error("Invalid email");
       }
     },
     setUser: setUser,
@@ -112,8 +112,10 @@ export const MockAuthProvider: React.FC<MockAuthProviderProps> = ({
   // Update mock functions with implementations
   Object.keys(implementations).forEach((key) => {
     if (key in mockAuthFunctions) {
-      mockAuthFunctions[key as keyof typeof mockAuthFunctions].mockImplementation(
-        implementations[key as keyof typeof implementations]
+      mockAuthFunctions[
+        key as keyof typeof mockAuthFunctions
+      ].mockImplementation(
+        implementations[key as keyof typeof implementations],
       );
     }
   });
@@ -135,7 +137,7 @@ export const MockAuthProvider: React.FC<MockAuthProviderProps> = ({
 export const useMockAuth = () => {
   const context = useContext(MockAuthContext);
   if (!context) {
-    throw new Error('useMockAuth must be used within a MockAuthProvider');
+    throw new Error("useMockAuth must be used within a MockAuthProvider");
   }
   return context;
 };
@@ -161,9 +163,7 @@ export const mockAuthSetup = () => {
     wrapper,
     mockFunctions,
   };
-}
-
-
+};
 
 export const mockAuthScenarios = {
   authenticated: {
@@ -183,10 +183,10 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        throw new Error('Auth error');
+        throw new Error("Auth error");
       },
       loginWithGoogle: async () => {
-        throw new Error('Google auth error');
+        throw new Error("Google auth error");
       },
     },
   },
@@ -195,10 +195,10 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        throw new Error('Network error');
+        throw new Error("Network error");
       },
       loginWithGoogle: async () => {
-        throw new Error('Network error');
+        throw new Error("Network error");
       },
     },
   },
@@ -207,7 +207,7 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        throw new Error('Validation failed');
+        throw new Error("Validation failed");
       },
     },
   },
@@ -216,10 +216,10 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        throw new Error('Internal server error');
+        throw new Error("Internal server error");
       },
       loginWithGoogle: async () => {
-        throw new Error('Internal server error');
+        throw new Error("Internal server error");
       },
     },
   },
@@ -228,10 +228,10 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        throw new Error('Too many requests');
+        throw new Error("Too many requests");
       },
       loginWithGoogle: async () => {
-        throw new Error('Too many requests');
+        throw new Error("Too many requests");
       },
     },
   },
@@ -240,8 +240,8 @@ export const mockAuthScenarios = {
     loading: false,
     mockImplementations: {
       register: async () => {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        throw new Error('Request timeout');
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        throw new Error("Request timeout");
       },
     },
   },

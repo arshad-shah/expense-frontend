@@ -1,19 +1,19 @@
 // src/services/DeleteUserService.ts
-import { 
+import {
   collection,
   writeBatch,
   getDocs,
   query,
   where,
-  doc
+  doc,
 } from "firebase/firestore";
-import { 
+import {
   deleteUser,
   reauthenticateWithCredential,
   EmailAuthProvider,
   GoogleAuthProvider,
   signInWithPopup,
-  getAuth
+  getAuth,
 } from "firebase/auth";
 import { db } from "../config/firebase";
 import type { ApiResponse } from "../types";
@@ -21,30 +21,38 @@ import type { ApiResponse } from "../types";
 /**
  * Re-authenticates a user based on their provider
  */
-const reauthorizeUser = async (providerId: string, password?: string): Promise<void> => {
+const reauthorizeUser = async (
+  providerId: string,
+  password?: string,
+): Promise<void> => {
   const auth = getAuth();
   const currentUser = auth.currentUser;
-  
+
   if (!currentUser || !currentUser.email) {
-    throw new Error('No authenticated user found');
+    throw new Error("No authenticated user found");
   }
 
   switch (providerId) {
-    case 'password':
+    case "password": {
       if (!password) {
-        throw new Error('Password required for email authentication');
+        throw new Error("Password required for email authentication");
       }
-      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      const credential = EmailAuthProvider.credential(
+        currentUser.email,
+        password,
+      );
       await reauthenticateWithCredential(currentUser, credential);
       break;
+    }
 
-    case 'google.com':
+    case "google.com": {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       break;
+    }
 
     default:
-      throw new Error('Unsupported authentication provider');
+      throw new Error("Unsupported authentication provider");
   }
 };
 
@@ -54,16 +62,16 @@ const reauthorizeUser = async (providerId: string, password?: string): Promise<v
  */
 export const deleteUserAccount = async (
   userId: string,
-  password?: string
+  password?: string,
 ): Promise<ApiResponse<void>> => {
   try {
     const auth = getAuth();
     const currentUser = auth.currentUser;
-    
+
     if (!currentUser) {
       return {
         status: 401,
-        error: 'User not authenticated'
+        error: "User not authenticated",
       };
     }
 
@@ -72,7 +80,7 @@ export const deleteUserAccount = async (
     if (!providerId) {
       return {
         status: 400,
-        error: 'No authentication provider found'
+        error: "No authentication provider found",
       };
     }
 
@@ -84,14 +92,17 @@ export const deleteUserAccount = async (
 
     // Delete accounts and their transactions
     const accountsSnapshot = await getDocs(
-      collection(db, `users/${userId}/accounts`)
+      collection(db, `users/${userId}/accounts`),
     );
     for (const accountDoc of accountsSnapshot.docs) {
       // Delete all transactions for this account
       const transactionsSnapshot = await getDocs(
-        collection(db, `users/${userId}/accounts/${accountDoc.id}/transactions`)
+        collection(
+          db,
+          `users/${userId}/accounts/${accountDoc.id}/transactions`,
+        ),
       );
-      transactionsSnapshot.docs.forEach(transactionDoc => {
+      transactionsSnapshot.docs.forEach((transactionDoc) => {
         batch.delete(transactionDoc.ref);
       });
       batch.delete(accountDoc.ref);
@@ -99,33 +110,33 @@ export const deleteUserAccount = async (
 
     // Delete budgets
     const budgetsSnapshot = await getDocs(
-      collection(db, `users/${userId}/budgets`)
+      collection(db, `users/${userId}/budgets`),
     );
-    budgetsSnapshot.docs.forEach(budgetDoc => {
+    budgetsSnapshot.docs.forEach((budgetDoc) => {
       batch.delete(budgetDoc.ref);
     });
 
     // Delete categories
     const categoriesSnapshot = await getDocs(
-      collection(db, `users/${userId}/categories`)
+      collection(db, `users/${userId}/categories`),
     );
-    categoriesSnapshot.docs.forEach(categoryDoc => {
+    categoriesSnapshot.docs.forEach((categoryDoc) => {
       batch.delete(categoryDoc.ref);
     });
 
     // Delete email change requests if any
     const emailRequestsSnapshot = await getDocs(
       query(
-        collection(db, 'emailChangeRequests'),
-        where('userId', '==', userId)
-      )
+        collection(db, "emailChangeRequests"),
+        where("userId", "==", userId),
+      ),
     );
-    emailRequestsSnapshot.docs.forEach(requestDoc => {
+    emailRequestsSnapshot.docs.forEach((requestDoc) => {
       batch.delete(requestDoc.ref);
     });
 
     // Delete user document
-    batch.delete(doc(db, 'users', userId));
+    batch.delete(doc(db, "users", userId));
 
     // Commit all Firestore deletions
     await batch.commit();
@@ -135,13 +146,14 @@ export const deleteUserAccount = async (
 
     return {
       status: 200,
-      message: 'Account successfully deleted'
+      message: "Account successfully deleted",
     };
   } catch (error) {
-    console.error('Error deleting user account:', error);
+    console.error("Error deleting user account:", error);
     return {
       status: 500,
-      error: error instanceof Error ? error.message : 'Failed to delete account'
+      error:
+        error instanceof Error ? error.message : "Failed to delete account",
     };
   }
 };
