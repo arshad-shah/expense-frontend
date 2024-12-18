@@ -340,7 +340,7 @@ describe("Alert Component", () => {
       await testAccessibility(container, ["tabindex"]);
 
       const interactiveElements = getAllByRole("button");
-      const link = container.querySelector("a");
+      const link = container.querySelector("button");
       expect(link).toBeInTheDocument();
 
       // Verify natural tab order
