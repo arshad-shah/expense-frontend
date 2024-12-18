@@ -5,11 +5,9 @@ import {
   Mail,
   Lock,
   User,
-  UserPlus,
   AlertCircle,
   ArrowLeft,
   DollarSign,
-  Layout,
 } from "lucide-react";
 import { Currency } from "@/types";
 import { Button } from "@/components/Button";
@@ -24,6 +22,7 @@ import {
 } from "@/components/Select";
 import { cn } from "@/lib/utils";
 import { CURRENCY, PASSWORD_REQUIREMENTS, VALIDATION_RULES } from "@/constants";
+import { FirebaseErrorHandler } from "@/lib/firebase-error-handler";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -82,7 +81,7 @@ const Register = () => {
       );
       navigate("/");
     } catch (err: unknown) {
-      setError((err as Error).message || "Failed to create account");
+      setError(FirebaseErrorHandler.auth(err, "register").message);
     } finally {
       setLoading(false);
     }
@@ -95,9 +94,7 @@ const Register = () => {
       await loginWithGoogle();
       navigate("/");
     } catch (err) {
-      const error =
-        err instanceof Error ? err.message : "Failed to register with Google";
-      setError(error);
+      setError(FirebaseErrorHandler.auth(err, "register").message);
     } finally {
       setLoading(false);
     }
@@ -111,29 +108,16 @@ const Register = () => {
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <div className="space-y-6 rounded-2xl bg-white/80 backdrop-blur-sm p-6 sm:p-8 shadow-xl shadow-indigo-200/20">
+        <div className="space-y-6 rounded-2xl backdrop-blur-sm p-6 sm:p-8">
           <div className="text-center space-y-2">
-            <div className="flex justify-center mb-6">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center"
-              >
-                <Layout className="h-8 w-8 text-indigo-600" />
-                <span className="ml-2 text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  ExpenseTracker
-                </span>
-              </motion.div>
-            </div>
-
             <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Create Account
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="flex justify-center text-sm text-gray-600">
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="inline-flex items-center font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                className="inline-flex items-center font-medium text-indigo-600 hover:text-indigo-500 transition-colors ml-1"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Sign in
@@ -329,20 +313,20 @@ const Register = () => {
                 disabled={loading}
                 variant="primary"
                 size="lg"
-                className="w-full h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200"
+                fullWidth
+                isLoading={loading}
               >
-                <UserPlus className="mr-2 h-5 w-5" />
-                {loading ? "Creating Account..." : "Create Account"}
+                Create Account
               </Button>
             </motion.div>
           </form>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">
+              <span className="bg-white px-4 text-gray-500 rounded-xl">
                 Or continue with
               </span>
             </div>
@@ -354,7 +338,7 @@ const Register = () => {
               disabled={loading}
               variant="outline"
               size="lg"
-              className="w-full h-11 border-2 border-gray-200 hover:border-gray-300 rounded-xl shadow-lg shadow-gray-100 hover:shadow-gray-200 transition-all duration-200"
+              fullWidth
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path

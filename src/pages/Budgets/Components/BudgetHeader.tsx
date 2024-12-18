@@ -1,7 +1,7 @@
-import React from 'react';
-import { Filter, Plus, PiggyBank } from 'lucide-react';
-import { Button } from '@/components/Button';
-import { motion } from 'framer-motion';
+import React from "react";
+import { Filter, Plus, PiggyBank } from "lucide-react";
+import { Button } from "@/components/Button";
+import { motion } from "framer-motion";
 
 interface BudgetHeaderProps {
   onOpenFilter: () => void;
@@ -12,7 +12,7 @@ interface BudgetHeaderProps {
 const BudgetHeader: React.FC<BudgetHeaderProps> = ({
   onOpenFilter,
   onAddBudget,
-  disableAdd = false
+  disableAdd = false,
 }) => {
   return (
     <div className="relative">
@@ -21,7 +21,7 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
 
       <div className="relative sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         {/* Title Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex-1 min-w-0"
@@ -38,21 +38,21 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
             Track and manage your spending limits
           </p>
         </motion.div>
-        
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           {/* Mobile view: Action buttons in a grid */}
           <div className="grid grid-cols-2 gap-3 sm:hidden">
             <motion.div
               whileTap={{ scale: 0.95 }}
-              className="w-full"
+              className="w-full col-span-2"
             >
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={onOpenFilter}
                 disabled={disableAdd}
-                className="w-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm"
+                fullWidth
               >
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
@@ -65,10 +65,10 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
             >
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={onAddBudget}
                 disabled={disableAdd}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-100"
+                fullWidth
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Budget
@@ -90,8 +90,8 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
               </Button>
             </motion.div>
 
-            <motion.div 
-              whileHover={{ scale: 1.02 }} 
+            <motion.div
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >
@@ -101,7 +101,6 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
                 size="md"
                 onClick={onAddBudget}
                 disabled={disableAdd}
-                className="relative bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-100/50"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Budget

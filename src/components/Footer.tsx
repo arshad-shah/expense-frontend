@@ -1,37 +1,37 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
-import { FaLinkedin, FaGithub, FaEnvelope, FaHackerrank } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Heart } from "lucide-react";
+import { FaLinkedin, FaGithub, FaEnvelope, FaHackerrank } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
     {
-      platform: 'LinkedIn',
-      url: 'https://www.linkedin.com/in/arshadshah',
+      platform: "LinkedIn",
+      url: "https://www.linkedin.com/in/arshadshah",
       icon: FaLinkedin,
     },
     {
-      platform: 'GitHub',
-      url: 'https://github.com/arshad-shah',
+      platform: "GitHub",
+      url: "https://github.com/arshad-shah",
       icon: FaGithub,
     },
     {
-      platform: 'Email',
-      url: 'mailto:arshad@arshadshah.com',
+      platform: "Email",
+      url: "mailto:arshad@arshadshah.com",
       icon: FaEnvelope,
     },
     {
-      platform: 'Hackerrank',
-      url: 'https://www.hackerrank.com/shaharshad57',
+      platform: "Hackerrank",
+      url: "https://www.hackerrank.com/shaharshad57",
       icon: FaHackerrank,
     },
   ];
 
   return (
-    <footer className="relative mt-7 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">
+    <footer className="relative bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">
       {/* Top Wave Decoration */}
       <div className="absolute left-0 top-0 w-full overflow-hidden">
         <svg
@@ -79,10 +79,16 @@ const Footer: React.FC = () => {
 
           {/* Links */}
           <div className="flex space-x-6 text-sm">
-            <Link to="/terms" className="text-gray-400 hover:text-white transition-colors">
+            <Link
+              to="/terms"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               Terms of Service
             </Link>
-            <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">
+            <Link
+              to="/privacy"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               Privacy Policy
             </Link>
           </div>
@@ -92,7 +98,7 @@ const Footer: React.FC = () => {
 
           {/* Copyright and Credits */}
           <div className="flex flex-col items-center space-y-2 text-center">
-            <motion.div 
+            <motion.div
               className="flex items-center text-sm text-gray-400"
               whileHover={{ scale: 1.05 }}
             >
@@ -107,11 +113,11 @@ const Footer: React.FC = () => {
 
           {/* Tech Stack */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {['React', 'Tailwind CSS', 'Vite'].map((tech) => (
+            {["React", "Tailwind CSS", "Vite"].map((tech) => (
               <motion.span
                 key={tech}
                 className="rounded-full bg-gray-800 px-3 py-1 text-xs text-gray-400"
-                whileHover={{ scale: 1.05, backgroundColor: '#1f2937' }}
+                whileHover={{ scale: 1.05, backgroundColor: "#1f2937" }}
               >
                 {tech}
               </motion.span>

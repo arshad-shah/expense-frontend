@@ -1,7 +1,7 @@
-import React from 'react';
-import { Filter, Download, Plus, ArrowRightLeft } from 'lucide-react';
-import { Button } from '@/components/Button';
-import { motion } from 'framer-motion';
+import React from "react";
+import { Filter, Download, Plus, ArrowRightLeft } from "lucide-react";
+import { Button } from "@/components/Button";
+import { motion } from "framer-motion";
 
 interface TransactionHeaderProps {
   onOpenFilter: () => void;
@@ -14,7 +14,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
   onOpenFilter,
   onExport,
   onAddTransaction,
-  disableAdd = false
+  disableAdd = false,
 }) => {
   return (
     <div className="relative">
@@ -23,7 +23,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
 
       <div className="relative sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         {/* Title Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex-1 min-w-0"
@@ -40,18 +40,15 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
             Manage your income and expenses
           </p>
         </motion.div>
-        
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           {/* Mobile view: Action buttons in a grid */}
           <div className="grid grid-cols-2 gap-3 sm:hidden">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="w-full"
-            >
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full">
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={onOpenFilter}
                 disabled={disableAdd}
                 className="w-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm"
@@ -61,13 +58,10 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
               </Button>
             </motion.div>
 
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="w-full"
-            >
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full">
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={onExport}
                 disabled={disableAdd}
                 className="w-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm"
@@ -83,7 +77,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
             >
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={onAddTransaction}
                 disabled={disableAdd}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg shadow-indigo-100"
@@ -101,7 +95,7 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
                 variant="secondary"
                 size="md"
                 onClick={onOpenFilter}
-                className="bg-white hover:bg-gray-50 border border-gray-200 shadow-sm"
+                disabled={disableAdd}
               >
                 <Filter className="h-5 w-5 mr-2" />
                 Filters
@@ -113,15 +107,15 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
                 variant="secondary"
                 size="md"
                 onClick={onExport}
-                className="bg-white hover:bg-gray-50 border border-gray-200 shadow-sm"
+                disabled={disableAdd}
               >
                 <Download className="h-5 w-5 mr-2" />
                 Export
               </Button>
             </motion.div>
 
-            <motion.div 
-              whileHover={{ scale: 1.02 }} 
+            <motion.div
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >
@@ -131,7 +125,6 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
                 size="md"
                 onClick={onAddTransaction}
                 disabled={disableAdd}
-                className="relative bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg shadow-indigo-100/50"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Transaction

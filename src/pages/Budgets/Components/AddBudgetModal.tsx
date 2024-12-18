@@ -14,7 +14,7 @@ import { createBudget } from "@/services/BudgetService";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BudgetCategoryAllocation, Category } from "@/types";
 import { BudgetPeriod } from "@/types";
-import { DollarSign} from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { getCategories } from "@/services/userService";
 import { formatCurrency } from "@/lib/utils";
 import { ProgressBar } from "@/components/Progressbar";
@@ -41,7 +41,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     startDate: new Date().toISOString().split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
   });
-  
+
   const [formData, setFormData] = useState({
     name: "",
     amount: 0,
@@ -55,8 +55,10 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     const fetchCategories = async () => {
       if (user) {
         const fetchedCategories = await getCategories(user.id);
-        if(fetchedCategories.data) {
-          setCategories(fetchedCategories.data.filter(cat => cat.type === 'EXPENSE'));
+        if (fetchedCategories.data) {
+          setCategories(
+            fetchedCategories.data.filter((cat) => cat.type === "EXPENSE"),
+          );
         }
       }
     };
@@ -92,12 +94,15 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
     return end.toISOString().split("T")[0];
   };
 
-  const totalAllocated = formData.categoryAllocations
-    .reduce((sum, alloc) => sum + alloc.amount, 0);
+  const totalAllocated = formData.categoryAllocations.reduce(
+    (sum, alloc) => sum + alloc.amount,
+    0,
+  );
   const remainingAmount = formData.amount - totalAllocated;
-  const allocationPercentage = formData.amount > 0 
-    ? ((totalAllocated / formData.amount) * 100).toFixed(1) 
-    : 0;
+  const allocationPercentage =
+    formData.amount > 0
+      ? ((totalAllocated / formData.amount) * 100).toFixed(1)
+      : 0;
 
   const handleCategoryAllocation = (categoryId: string, newAmount: number) => {
     if (newAmount < 0) {
@@ -105,21 +110,24 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
       return;
     }
 
-    const currentAllocation = formData.categoryAllocations.find(
-      alloc => alloc.categoryId === categoryId
-    )?.amount || 0;
+    const currentAllocation =
+      formData.categoryAllocations.find(
+        (alloc) => alloc.categoryId === categoryId,
+      )?.amount || 0;
 
     const potentialTotal = totalAllocated - currentAllocation + newAmount;
 
     if (potentialTotal > formData.amount) {
-      setError(`Cannot exceed total budget of ${formatCurrency(formData.amount, user?.preferences.currency || "USD")}`);
+      setError(
+        `Cannot exceed total budget of ${formatCurrency(formData.amount, user?.preferences.currency || "USD")}`,
+      );
       return;
     }
 
     setError(null);
     setFormData((prev) => {
       const updatedAllocations = prev.categoryAllocations.filter(
-        (alloc) => alloc.categoryId !== categoryId
+        (alloc) => alloc.categoryId !== categoryId,
       );
       if (newAmount > 0) {
         updatedAllocations.push({ categoryId, amount: newAmount });
@@ -146,20 +154,25 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
       setLoading(true);
       setError(null);
 
-      const categoriesAllocated = formData.categoryAllocations.reduce((acc, alloc) => {
-        const category = categories.find((cat) => cat.id === alloc.categoryId);
-        if (category) {
-          acc[category.name] = {
-            categoryId: alloc.categoryId,
-            amount: alloc.amount,
-            spent: 0,
-            remaining: alloc.amount,
-            status: "ON_TRACK",
-          };
-        }
-        return acc;
-      }, {} as Record<string, BudgetCategoryAllocation>);
-      
+      const categoriesAllocated = formData.categoryAllocations.reduce(
+        (acc, alloc) => {
+          const category = categories.find(
+            (cat) => cat.id === alloc.categoryId,
+          );
+          if (category) {
+            acc[category.name] = {
+              categoryId: alloc.categoryId,
+              amount: alloc.amount,
+              spent: 0,
+              remaining: alloc.amount,
+              status: "ON_TRACK",
+            };
+          }
+          return acc;
+        },
+        {} as Record<string, BudgetCategoryAllocation>,
+      );
+
       await createBudget(
         user.id,
         {
@@ -167,11 +180,13 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           userId: user.id,
           rollover: true,
           period: formData.period as BudgetPeriod,
-          endDate: dateRange.endDate  ? dateRange.endDate  : calculateEndDate(formData.startDate, formData.period),
+          endDate: dateRange.endDate
+            ? dateRange.endDate
+            : calculateEndDate(formData.startDate, formData.period),
           categoryAllocations: formData.categoryAllocations,
           startDate: dateRange.startDate,
         },
-        categoriesAllocated
+        categoriesAllocated,
       );
 
       onBudgetAdded();
@@ -187,23 +202,19 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Create New Budget">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <Alert variant="error">
-            {error}
-          </Alert>
-        )}
-
+        {error && <Alert variant="error">{error}</Alert>}
 
         {/* Main Budget Information */}
         <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-xl p-4 md:p-6 space-y-4">
-
           {/* Form Fields */}
           <div className="space-y-4">
             <Input
               type="text"
               label="Budget Name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               required
               className="w-full"
               placeholder="e.g., Monthly Expenses"
@@ -216,7 +227,12 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
                 label="Budget Amount"
                 icon={<DollarSign className="h-5 w-5 text-gray-400" />}
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    amount: parseFloat(e.target.value),
+                  })
+                }
                 required
                 placeholder="0.00"
               />
@@ -224,11 +240,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
               <div className="space-y-1">
                 <Select
                   value={formData.period}
-                  onValueChange={(value) => setFormData({ ...formData, period: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, period: value })
+                  }
                 >
-                  <SelectTrigger 
-                    label="Period"
-                    className="w-full">
+                  <SelectTrigger label="Period" className="w-full">
                     <SelectValue placeholder="Select period" />
                   </SelectTrigger>
                   <SelectContent>
@@ -242,24 +258,22 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
                 </Select>
               </div>
             </div>
-              <DateRangePicker dateRange={
-                dateRange
-              } onChange={
-                ({ startDate, endDate }) => 
-                  setDateRange((prev) => (
-                    {
-                      ...prev,
-                      startDate: startDate,
-                      endDate: endDate,
-                    }
-                  ))
-              }/>
+            <DateRangePicker
+              dateRange={dateRange}
+              onChange={({ startDate, endDate }) =>
+                setDateRange((prev) => ({
+                  ...prev,
+                  startDate: startDate,
+                  endDate: endDate,
+                }))
+              }
+            />
           </div>
         </div>
 
         {/* Category Allocations */}
         <div className="bg-white rounded-xl shadow-md">
-          <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl border-b border-teal-200"/>
+          <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl border-b border-teal-200" />
 
           <div className="max-h-48 sm:max-h-64 overflow-y-auto p-4 space-y-2">
             {categories.map((category) => (
@@ -267,21 +281,27 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
                 key={category.id}
                 className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 transition-colors"
               >
-                <span className="text-sm font-medium text-gray-800">{category.name}</span>
+                <span className="text-sm font-medium text-gray-800">
+                  {category.name}
+                </span>
                 <div className="relative w-32">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
                     max={formData.amount}
-                    value={formData.categoryAllocations.find(
-                      alloc => alloc.categoryId === category.id
-                    )?.amount || ''}
+                    value={
+                      formData.categoryAllocations.find(
+                        (alloc) => alloc.categoryId === category.id,
+                      )?.amount || ""
+                    }
                     placeholder="0.00"
                     className="w-full pl-8 text-right"
                     onChange={(e) =>
-                      handleCategoryAllocation(category.id, parseFloat(e.target.value) || 0)
+                      handleCategoryAllocation(
+                        category.id,
+                        parseFloat(e.target.value) || 0,
+                      )
                     }
                   />
                 </div>
@@ -293,12 +313,16 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-teal-50 to-teal-100 rounded-b-xl">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-teal-900">Allocation Progress</span>
+                <span className="text-sm text-teal-900">
+                  Allocation Progress
+                </span>
               </div>
-              
-              <ProgressBar 
-                value={Number(allocationPercentage)} 
-                variant={Number(allocationPercentage) === 100 ? 'success' : 'info'}
+
+              <ProgressBar
+                value={Number(allocationPercentage)}
+                variant={
+                  Number(allocationPercentage) === 100 ? "success" : "info"
+                }
                 showPercentage
                 animated={Number(allocationPercentage) < 100}
                 size="md"
@@ -306,10 +330,18 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
 
               <div className="flex justify-between text-sm">
                 <span className="text-teal-700">
-                  Allocated: {formatCurrency(totalAllocated, user?.preferences.currency || "USD")}
+                  Allocated:{" "}
+                  {formatCurrency(
+                    totalAllocated,
+                    user?.preferences.currency || "USD",
+                  )}
                 </span>
                 <span className="text-teal-700">
-                  Remaining: {formatCurrency(Math.abs(remainingAmount), user?.preferences.currency || "USD")}
+                  Remaining:{" "}
+                  {formatCurrency(
+                    Math.abs(remainingAmount),
+                    user?.preferences.currency || "USD",
+                  )}
                 </span>
               </div>
             </div>
@@ -326,11 +358,12 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={loading || remainingAmount !== 0}
+            isLoading={loading}
           >
-            {loading ? "Creating Budget..." : "Create Budget"}
+            Create Budget
           </Button>
         </div>
       </form>

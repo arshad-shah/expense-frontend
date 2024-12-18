@@ -1,11 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
-import { getTransactions } from '@/services/TransactionService';
-import { getCategories } from '@/services/userService';
-import { useAuth } from '@/contexts/AuthContext';
-import type { Transaction, Category } from '@/types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { ArrowUpRight, PieChart as PieChartIcon, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useEffect, useState, useCallback } from "react";
+import { getTransactions } from "@/services/TransactionService";
+import { getCategories } from "@/services/userService";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Transaction, Category } from "@/types";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  ArrowUpRight,
+  PieChart as PieChartIcon,
+  AlertTriangle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 
 interface CategorySpending {
   name: string;
@@ -26,56 +31,65 @@ interface CustomTooltipProps {
 const TopCategories = () => {
   const [categories, setCategories] = useState<CategorySpending[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const { user } = useAuth();
 
-  const processCategorySpending = useCallback((transactions: Transaction[], categoryMap: Map<string, Category>): CategorySpending[] => {
-    const spendingMap = new Map<string, Omit<CategorySpending, 'percentage'>>();
-    let total = 0;
+  const processCategorySpending = useCallback(
+    (
+      transactions: Transaction[],
+      categoryMap: Map<string, Category>,
+    ): CategorySpending[] => {
+      const spendingMap = new Map<
+        string,
+        Omit<CategorySpending, "percentage">
+      >();
+      let total = 0;
 
-    // Calculate totals and transaction counts
-    transactions.forEach(transaction => {
-      if (transaction.type === 'EXPENSE') {
-        const categoryId = transaction.categoryId;
-        const category = categoryMap.get(categoryId);
-        if (!category) return;
+      // Calculate totals and transaction counts
+      transactions.forEach((transaction) => {
+        if (transaction.type === "EXPENSE") {
+          const categoryId = transaction.categoryId;
+          const category = categoryMap.get(categoryId);
+          if (!category) return;
 
-        const existing = spendingMap.get(categoryId);
-        const amount = transaction.amount;
-        total += amount;
-        
-        if (existing) {
-          existing.value += amount;
-          existing.transactionCount += 1;
-        } else {
-          spendingMap.set(categoryId, {
-            id: categoryId,
-            name: category.name,
-            value: amount,
-            color: category.color || '#6B7280',
-            transactionCount: 1
-          });
+          const existing = spendingMap.get(categoryId);
+          const amount = transaction.amount;
+          total += amount;
+
+          if (existing) {
+            existing.value += amount;
+            existing.transactionCount += 1;
+          } else {
+            spendingMap.set(categoryId, {
+              id: categoryId,
+              name: category.name,
+              value: amount,
+              color: category.color || "#6B7280",
+              transactionCount: 1,
+            });
+          }
         }
-      }
-    });
+      });
 
-    // Calculate percentages and sort
-    return Array.from(spendingMap.values())
-      .map(category => ({
-        ...category,
-        percentage: (category.value / total) * 100
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, []);
+      // Calculate percentages and sort
+      return Array.from(spendingMap.values())
+        .map((category) => ({
+          ...category,
+          percentage: (category.value / total) * 100,
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+    },
+    [],
+  );
 
   const fetchCategoryData = useCallback(async () => {
     if (!user?.id) return;
 
     try {
       setLoading(true);
-      setError('');
+      setError("");
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -84,37 +98,46 @@ const TopCategories = () => {
       // Fetch categories and transactions in parallel
       const [categoriesResponse, transactionsResponse] = await Promise.all([
         getCategories(user.id),
-        getTransactions(user.id, {
-          dateRange: {
-            startDate: startOfMonth.toISOString(),
-            endDate: endOfMonth.toISOString()
+        getTransactions(
+          user.id,
+          {
+            dateRange: {
+              startDate: startOfMonth.toISOString(),
+              endDate: endOfMonth.toISOString(),
+            },
+            types: ["EXPENSE"],
           },
-          types: ['EXPENSE']
-        }, 1, 1000)
+          1,
+          1000,
+        ),
       ]);
 
       if (categoriesResponse.status !== 200 || !categoriesResponse.data) {
-        throw new Error('Failed to fetch categories');
+        throw new Error("Failed to fetch categories");
       }
 
       if (transactionsResponse.status !== 200 || !transactionsResponse.data) {
-        throw new Error('Failed to fetch transactions');
+        throw new Error("Failed to fetch transactions");
       }
 
       // Create a map of categories for easy lookup
       const categoryMap = new Map(
-        categoriesResponse.data.map(category => [category.id, category])
+        categoriesResponse.data.map((category) => [category.id, category]),
       );
 
       const categoryTotals = processCategorySpending(
         transactionsResponse.data.items,
-        categoryMap
+        categoryMap,
       );
-      
+
       setCategories(categoryTotals);
     } catch (err) {
-      console.error('Error fetching category data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load category information');
+      console.error("Error fetching category data:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load category information",
+      );
     } finally {
       setLoading(false);
     }
@@ -125,9 +148,9 @@ const TopCategories = () => {
   }, [fetchCategoryData]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences.currency || 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: user?.preferences.currency || "USD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -147,8 +170,12 @@ const TopCategories = () => {
           <span className="font-medium text-gray-900">{data.name}</span>
         </div>
         <div className="text-sm space-y-1">
-          <p className="font-medium text-gray-900">{formatCurrency(data.value)}</p>
-          <p className="text-gray-500">{data.percentage.toFixed(1)}% of total</p>
+          <p className="font-medium text-gray-900">
+            {formatCurrency(data.value)}
+          </p>
+          <p className="text-gray-500">
+            {data.percentage.toFixed(1)}% of total
+          </p>
           <p className="text-gray-500">{data.transactionCount} transactions</p>
         </div>
       </div>
@@ -159,7 +186,9 @@ const TopCategories = () => {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Top Categories</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Top Categories
+          </h2>
           <PieChartIcon className="w-5 h-5 text-gray-400" />
         </div>
         <div className="animate-pulse space-y-6">
@@ -184,7 +213,9 @@ const TopCategories = () => {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Top Categories</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Top Categories
+          </h2>
           <AlertTriangle className="w-5 h-5 text-red-500" />
         </div>
         <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center gap-3">
@@ -200,14 +231,20 @@ const TopCategories = () => {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Top Categories</h2>
-            <p className="text-sm text-gray-500 mt-1">No spending data available</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Top Categories
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              No spending data available
+            </p>
           </div>
           <PieChartIcon className="w-5 h-5 text-gray-400" />
         </div>
-        <div className="text-center py-12">
-          <p className="text-gray-500">No spending data for this period</p>
-          <p className="text-sm text-gray-400 mt-1">Start tracking your expenses to see insights</p>
+        <div className="text-center p-1">
+          <EmptyState
+            heading="No Spending Data"
+            message="Looks like you haven't made any transactions this month."
+          />
         </div>
       </div>
     );
@@ -219,7 +256,9 @@ const TopCategories = () => {
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Top Categories</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Top Categories
+          </h2>
           <p className="text-sm text-gray-500 mt-1">
             Total spent: {formatCurrency(totalSpent)}
           </p>
@@ -247,7 +286,9 @@ const TopCategories = () => {
                   <Cell
                     key={entry.id}
                     fill={entry.color}
-                    opacity={activeIndex === null || activeIndex === index ? 1 : 0.6}
+                    opacity={
+                      activeIndex === null || activeIndex === index ? 1 : 0.6
+                    }
                     stroke="white"
                     strokeWidth={2}
                   />
@@ -283,10 +324,12 @@ const TopCategories = () => {
                 </div>
               </div>
               <div className="text-right">
-                <span className={cn(
-                  "font-medium",
-                  activeIndex === index ? "text-gray-900" : "text-gray-600"
-                )}>
+                <span
+                  className={cn(
+                    "font-medium",
+                    activeIndex === index ? "text-gray-900" : "text-gray-600",
+                  )}
+                >
                   {formatCurrency(category.value)}
                 </span>
                 <div className="text-xs text-gray-500">

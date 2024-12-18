@@ -1,85 +1,99 @@
-import PrivateRoute from '@/components/PrivateRoute';
-import Accounts from '@/pages/Accounts';
-import Budgets from '@/pages/Budgets';
-import { AuthenticatedLayout, AuthVerificationHandler, UnauthenticatedLayout } from '@/pages/common/Layouts';
-import Dashboard from '@/pages/Dashboard';
-import ForgotPassword from '@/pages/forgotPassword/ForgotPassword';
-import { PrivacyPolicy, TermsOfService } from '@/pages/legal';
-import Login from '@/pages/login';
-import ProfileComponent from '@/pages/Profile';
-import VerifyEmail from '@/pages/Profile/VerifyEmail';
-import Register from '@/pages/register';
-import ResetPassword from '@/pages/resetPassword/ResetPassword';
-import Transactions from '@/pages/Transactions';
-import { createBrowserRouter, Outlet } from 'react-router-dom';
+import PrivateRoute from "@/components/PrivateRoute";
+import Accounts from "@/pages/Accounts";
+import Budgets from "@/pages/Budgets";
+import {
+  AuthenticatedLayout,
+  AuthVerificationHandler,
+  UnauthenticatedLayout,
+} from "@/pages/common/Layouts";
+import Dashboard from "@/pages/Dashboard";
+import ForgotPassword from "@/pages/forgotPassword/ForgotPassword";
+import { PrivacyPolicy, TermsOfService } from "@/pages/legal";
+import Login from "@/pages/login";
+import ProfileComponent from "@/pages/Profile";
+// import VerifyEmail from '@/pages/Profile/VerifyEmail';
+import Register from "@/pages/register";
+import ResetPassword from "@/pages/resetPassword/ResetPassword";
+import Transactions from "@/pages/Transactions";
+import { createBrowserRouter, Outlet } from "react-router-dom";
+import ErrorBoundary from "./ErrorFallback";
+import NotFound from "./404";
 
 export const router = createBrowserRouter([
   // Protected Routes (with Navigation)
   {
     element: (
-      <PrivateRoute>
-        <AuthenticatedLayout>
-          <Outlet />
-        </AuthenticatedLayout>
-      </PrivateRoute>
+      <ErrorBoundary>
+        <PrivateRoute>
+          <AuthenticatedLayout>
+            <Outlet />
+          </AuthenticatedLayout>
+        </PrivateRoute>
+      </ErrorBoundary>
     ),
     children: [
       {
+        path: "*",
+        element: <NotFound />,
+      },
+      {
         path: "/",
-        element: <Dashboard />
+        element: <Dashboard />,
       },
       {
         path: "/accounts",
-        element: <Accounts />
+        element: <Accounts />,
       },
       {
         path: "/transactions",
-        element: <Transactions />
+        element: <Transactions />,
       },
       {
         path: "/budgets",
-        element: <Budgets />
+        element: <Budgets />,
       },
       {
         path: "/profile",
-        element: <ProfileComponent />
-      }
-    ]
+        element: <ProfileComponent />,
+      },
+    ],
   },
 
   // Public Routes (without Navigation)
   {
     element: (
-      <UnauthenticatedLayout>
-        <Outlet />
-      </UnauthenticatedLayout>
+      <ErrorBoundary>
+        <UnauthenticatedLayout>
+          <Outlet />
+        </UnauthenticatedLayout>
+      </ErrorBoundary>
     ),
     children: [
       {
         path: "/login",
-        element: <Login />
+        element: <Login />,
       },
       {
         path: "/register",
-        element: <Register />
+        element: <Register />,
       },
       {
         path: "/forgot-password",
-        element: <ForgotPassword />
+        element: <ForgotPassword />,
       },
       {
         path: "/reset-password",
-        element: <ResetPassword />
+        element: <ResetPassword />,
       },
       {
         path: "/terms",
-        element: <TermsOfService />
+        element: <TermsOfService />,
       },
       {
         path: "/privacy",
-        element: <PrivacyPolicy />
+        element: <PrivacyPolicy />,
       },
-      { path: "/auth-verification", element: <AuthVerificationHandler /> }
-    ]
+      { path: "/auth-verification", element: <AuthVerificationHandler /> },
+    ],
   },
 ]);

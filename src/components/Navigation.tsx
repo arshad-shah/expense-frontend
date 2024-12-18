@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Home, 
-  CreditCard, 
-  DollarSign, 
-  PieChart, 
-  User, 
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home,
+  CreditCard,
+  DollarSign,
+  PieChart,
+  User,
   LogOut,
   Menu,
   X,
-  LucideIcon 
-} from 'lucide-react';
-import { Button } from '@/components/Button';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
-import AppLogo from '../assets/vite.webp';
+  LucideIcon,
+} from "lucide-react";
+import { Button } from "@/components/Button";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import AppLogo from "../assets/vite.webp";
 
 // Types
 interface NavItem {
@@ -36,23 +36,24 @@ interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => Promise<void>;
+  isLogingOut: boolean;
 }
 
 // Constants
 const NAV_ITEMS: NavItem[] = [
-  { path: '/', icon: Home, label: 'Dashboard' },
-  { path: '/accounts', icon: CreditCard, label: 'Accounts' },
-  { path: '/transactions', icon: DollarSign, label: 'Transactions' },
-  { path: '/budgets', icon: PieChart, label: 'Budgets' },
+  { path: "/", icon: Home, label: "Dashboard" },
+  { path: "/accounts", icon: CreditCard, label: "Accounts" },
+  { path: "/transactions", icon: DollarSign, label: "Transactions" },
+  { path: "/budgets", icon: PieChart, label: "Budgets" },
 ];
 
 // NavLink Component
-const NavLink: React.FC<NavLinkProps> = ({ 
-  to, 
-  icon: Icon, 
-  children, 
+const NavLink: React.FC<NavLinkProps> = ({
+  to,
+  icon: Icon,
+  children,
   isMobile = false,
-  onClick 
+  onClick,
 }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
@@ -69,16 +70,18 @@ const NavLink: React.FC<NavLinkProps> = ({
         className={cn(
           "inline-flex items-center w-full px-4 py-3 font-medium rounded-xl transition-all duration-200",
           isActive
-            ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200/50" 
+            ? "text-white bg-indigo-600 shadow-lg shadow-indigo-200/50"
             : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50",
           isMobile ? "text-lg" : "text-sm lg:text-base",
-          "group"
+          "group",
         )}
       >
-        <Icon className={cn(
-          "transition-transform group-hover:scale-110 duration-200",
-          isMobile ? "h-5 w-5 mr-3" : "h-4 w-4 lg:h-5 lg:w-5 mr-2.5"
-        )} />
+        <Icon
+          className={cn(
+            "transition-transform group-hover:scale-110 duration-200",
+            isMobile ? "h-5 w-5 mr-3" : "h-4 w-4 lg:h-5 lg:w-5 mr-2.5",
+          )}
+        />
         {children}
       </Link>
     </motion.div>
@@ -93,9 +96,9 @@ const Logo: React.FC = () => (
     className="flex-shrink-0"
   >
     <Link to="/" className="flex items-center">
-      <img 
-        src={AppLogo} 
-        alt="ExpenseTracker" 
+      <img
+        src={AppLogo}
+        alt="ExpenseTracker"
         className="h-8 w-auto lg:h-10 lg:w-auto"
       />
       <span className="ml-2.5 text-lg lg:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
@@ -106,21 +109,26 @@ const Logo: React.FC = () => (
 );
 
 // Mobile Menu Component
-const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onLogout }) => {
+const MobileMenu: React.FC<MobileMenuProps> = ({
+  isOpen,
+  onClose,
+  onLogout,
+  isLogingOut,
+}) => {
   // Animation variants
   const containerVariants = {
     closed: { opacity: 0 },
-    open: { 
+    open: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
     closed: { opacity: 0, x: -20 },
-    open: { opacity: 1, x: 0 }
+    open: { opacity: 1, x: 0 },
   };
 
   return (
@@ -150,10 +158,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onLogout }) =>
           <motion.div className="h-[calc(100vh-4rem)] px-4 py-6 overflow-y-auto">
             <div className="space-y-3">
               {NAV_ITEMS.map((item) => (
-                <motion.div
-                  key={item.path}
-                  variants={itemVariants}
-                >
+                <motion.div key={item.path} variants={itemVariants}>
                   <NavLink
                     to={item.path}
                     icon={item.icon}
@@ -166,12 +171,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onLogout }) =>
               ))}
 
               <motion.div variants={itemVariants}>
-                <NavLink
-                  to="/profile"
-                  icon={User}
-                  isMobile
-                  onClick={onClose}
-                >
+                <NavLink to="/profile" icon={User} isMobile onClick={onClose}>
                   Profile
                 </NavLink>
               </motion.div>
@@ -180,7 +180,8 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onLogout }) =>
                 <Button
                   onClick={onLogout}
                   variant="danger"
-                  className="w-full justify-center text-lg py-3 h-auto rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200"
+                  isLoading={isLogingOut}
+                  fullWidth
                 >
                   <LogOut className="h-5 w-5 mr-2.5" />
                   Logout
@@ -201,15 +202,20 @@ interface NavContainerProps {
 }
 
 // Nav Container Component
-const NavContainer: React.FC<NavContainerProps> = ({ isScrolled, children }) => (
+const NavContainer: React.FC<NavContainerProps> = ({
+  isScrolled,
+  children,
+}) => (
   <motion.nav
     initial={false}
     animate={{
-      backgroundColor: isScrolled ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 1)",
+      backgroundColor: isScrolled
+        ? "rgba(255, 255, 255, 0.9)"
+        : "rgba(255, 255, 255, 1)",
       backdropFilter: isScrolled ? "blur(8px)" : "none",
-      boxShadow: isScrolled 
+      boxShadow: isScrolled
         ? "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
-        : "none"
+        : "none",
     }}
     className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100"
   >
@@ -222,29 +228,35 @@ const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [isLogingOut, setIsLogingOut] = useState<boolean>(false);
 
   useEffect(() => {
     const handleScroll = (): void => {
       setIsScrolled(window.scrollY > 10);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = isMobileMenuOpen ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
+    document.body.style.overflow = isMobileMenuOpen ? "hidden" : "unset";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [isMobileMenuOpen]);
 
   if (!user) return null;
 
   const handleLogout = async (): Promise<void> => {
     try {
+      setIsLogingOut(true);
       await logout();
       setIsMobileMenuOpen(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
+    } finally {
+      setIsLogingOut(false);
     }
   };
 
@@ -256,15 +268,11 @@ const Navigation: React.FC = () => {
             {/* Left section */}
             <div className="flex items-center flex-1">
               <Logo />
-              
+
               {/* Desktop Navigation */}
               <div className="hidden lg:flex lg:items-center lg:ml-10 lg:space-x-2">
                 {NAV_ITEMS.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    icon={item.icon}
-                  >
+                  <NavLink key={item.path} to={item.path} icon={item.icon}>
                     {item.label}
                   </NavLink>
                 ))}
@@ -273,11 +281,13 @@ const Navigation: React.FC = () => {
 
             {/* Desktop Right section */}
             <div className="hidden lg:flex lg:items-center lg:space-x-3">
-              <NavLink to="/profile" icon={User}>Profile</NavLink>
+              <NavLink to="/profile" icon={User}>
+                Profile
+              </NavLink>
               <Button
                 onClick={handleLogout}
                 variant="danger"
-                className="px-4 py-3 h-auto text-base rounded-xl shadow-lg shadow-red-100 hover:shadow-red-200 group"
+                isLoading={isLogingOut}
               >
                 <LogOut className="h-5 w-5 mr-2.5 transition-transform group-hover:scale-110" />
                 Logout
@@ -302,10 +312,11 @@ const Navigation: React.FC = () => {
       </NavContainer>
 
       {/* Mobile Menu */}
-      <MobileMenu 
+      <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         onLogout={handleLogout}
+        isLogingOut={isLogingOut}
       />
 
       {/* Spacer */}
