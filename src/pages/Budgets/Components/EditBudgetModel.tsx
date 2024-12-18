@@ -13,7 +13,7 @@ import { Button } from "@/components/Button";
 import { updateBudget } from "@/services/BudgetService";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Budget, BudgetPeriod, Category } from "@/types";
-import { DollarSign, Save, AlertCircle } from "lucide-react";
+import { DollarSign, AlertCircle } from "lucide-react";
 import { getCategories } from "@/services/userService";
 import { formatCurrency } from "@/lib/utils";
 import { ProgressBar } from "@/components/Progressbar";
@@ -183,13 +183,6 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
 
         {/* Main Budget Information */}
         <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-xl p-4 md:p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign className="h-5 w-5 text-indigo-600" />
-            <h3 className="text-lg font-semibold text-indigo-900">
-              Budget Details
-            </h3>
-          </div>
-
           {/* Budget Name */}
           <div className="space-y-1">
             <Input
@@ -200,7 +193,6 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
                 setFormData({ ...formData, name: e.target.value })
               }
               required
-              className="w-full border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
               placeholder="e.g., Monthly Expenses"
             />
           </div>
@@ -220,7 +212,6 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
                     handleBudgetAmountChange(parseFloat(e.target.value))
                   }
                   required
-                  className="w-full pl-8 border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500"
                   placeholder="0.00"
                 />
               </div>
@@ -250,92 +241,84 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
               </Select>
             </div>
           </div>
+        </div>
 
-          {/* Category Allocations */}
-          <div className="bg-white rounded-xl shadow-md mt-6">
-            <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl">
-              <h3 className="text-lg font-semibold text-teal-900">
-                Category Allocations
-              </h3>
-            </div>
+        {/* Category Allocations */}
+        <div className="bg-white rounded-xl shadow-md mt-6">
+          <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-xl"></div>
 
-            <div className="max-h-48 sm:max-h-64 overflow-y-auto p-4 space-y-2">
-              {categories.map((category) => {
-                const currentAllocation =
-                  formData.categoryAllocations.find(
-                    (alloc) => alloc.categoryId === category.id,
-                  )?.allocatedAmount || 0;
-                const maxAllocation = currentAllocation + remainingAmount;
+          <div className="max-h-48 sm:max-h-64 overflow-y-auto p-4 space-y-2">
+            {categories.map((category) => {
+              const currentAllocation =
+                formData.categoryAllocations.find(
+                  (alloc) => alloc.categoryId === category.id,
+                )?.allocatedAmount || 0;
+              const maxAllocation = currentAllocation + remainingAmount;
 
-                return (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-800">
-                      {category.name}
-                    </span>
-                    <div className="relative w-32">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        $
-                      </span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max={maxAllocation}
-                        value={currentAllocation}
-                        placeholder="0.00"
-                        className="w-full pl-8 text-right border-gray-200 focus:border-teal-500 focus:ring-teal-500"
-                        onChange={(e) =>
-                          handleCategoryAllocation(
-                            category.id,
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                      />
-                    </div>
+              return (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-sm font-medium text-gray-800">
+                    {category.name}
+                  </span>
+                  <div className="relative w-32">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max={maxAllocation}
+                      value={currentAllocation}
+                      placeholder="0.00"
+                      onChange={(e) =>
+                        handleCategoryAllocation(
+                          category.id,
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
+                    />
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
 
-            {/* Enhanced allocation progress */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">
-                    Allocation Progress
-                  </span>
-                </div>
-                <ProgressBar
-                  value={Math.min(Number(allocationPercentage), 100)}
-                  variant={
-                    Number(allocationPercentage) === 100
-                      ? "success"
-                      : Number(allocationPercentage) > 100
-                        ? "danger"
-                        : "info"
-                  }
-                  showPercentage
-                  animated={Number(allocationPercentage) < 100}
-                />
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    Allocated:{" "}
-                    {formatCurrency(
-                      totalAllocated,
-                      user?.preferences.currency || "USD",
-                    )}
-                  </span>
-                  <span className="text-gray-600">
-                    Remaining:{" "}
-                    {formatCurrency(
-                      Math.abs(remainingAmount),
-                      user?.preferences.currency || "USD",
-                    )}
-                  </span>
-                </div>
+          {/* Enhanced allocation progress */}
+          <div className="rounded-lg p-4 bg-gradient-to-r from-teal-20 to-teal-100 rounded-t-xl">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">
+                  Allocation Progress
+                </span>
+              </div>
+              <ProgressBar
+                value={Math.min(Number(allocationPercentage), 100)}
+                variant={
+                  Number(allocationPercentage) === 100
+                    ? "success"
+                    : Number(allocationPercentage) > 100
+                      ? "danger"
+                      : "info"
+                }
+                showPercentage
+                animated={Number(allocationPercentage) < 100}
+              />
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">
+                  Allocated:{" "}
+                  {formatCurrency(
+                    totalAllocated,
+                    user?.preferences.currency || "USD",
+                  )}
+                </span>
+                <span className="text-gray-600">
+                  Remaining:{" "}
+                  {formatCurrency(
+                    Math.abs(remainingAmount),
+                    user?.preferences.currency || "USD",
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -355,16 +338,9 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
           <Button
             type="submit"
             disabled={loading || totalAllocated > formData.amount}
-            className="w-full sm:w-auto"
+            isLoading={loading}
           >
-            {loading ? (
-              "Saving Changes..."
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
-            )}
+            Save
           </Button>
         </div>
       </form>

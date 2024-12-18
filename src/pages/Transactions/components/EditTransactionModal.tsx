@@ -12,12 +12,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { updateTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import type { 
-  Transaction, 
-  Account, 
-  Category, 
-  TransactionInput,
-} from "@/types";
+import type { Transaction, Account, Category, TransactionInput } from "@/types";
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -39,7 +34,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState<Partial<TransactionInput>>({
     accountId: transaction.accountId,
     categoryId: transaction.categoryId,
@@ -48,20 +43,20 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     description: transaction.description,
     transactionDate: transaction.transactionDate.split("T")[0],
     isRecurring: transaction.isRecurring,
-    metadata: transaction.metadata
+    metadata: transaction.metadata,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
       // Find the selected account
       const selectedAccount = accounts.find(
-        (account) => account.id === formData.accountId
+        (account) => account.id === formData.accountId,
       );
 
       if (!selectedAccount) {
@@ -71,17 +66,19 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
       // Check if the transaction amount exceeds the account balance
       if (
-        formData.type === "EXPENSE" && 
-        formData.amount && 
+        formData.type === "EXPENSE" &&
+        formData.amount &&
         formData.amount > selectedAccount.balance
       ) {
-        setError(`Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`);
+        setError(
+          `Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`,
+        );
         return;
       }
 
       // Get the selected category
       const selectedCategory = categories.find(
-        (category) => category.id === formData.categoryId
+        (category) => category.id === formData.categoryId,
       );
 
       if (!selectedCategory) {
@@ -90,16 +87,12 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       }
 
       // Call the updated transaction service
-      const response = await updateTransaction(
-        user.id,
-        transaction.id,
-        {
-          ...formData,
-          // Include denormalized fields required by the new service
-          accountName: selectedAccount.name,
-          categoryName: selectedCategory.name
-        }
-      );
+      const response = await updateTransaction(user.id, transaction.id, {
+        ...formData,
+        // Include denormalized fields required by the new service
+        accountName: selectedAccount.name,
+        categoryName: selectedCategory.name,
+      });
 
       if (response.status === 200) {
         onUpdate();
@@ -109,7 +102,9 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       }
     } catch (error) {
       console.error("Error updating transaction:", error);
-      setError(error instanceof Error ? error.message : "Failed to update transaction");
+      setError(
+        error instanceof Error ? error.message : "Failed to update transaction",
+      );
     } finally {
       setLoading(false);
     }
@@ -127,10 +122,14 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
         {/* Account Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Account</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Account
+          </label>
           <Select
             value={formData.accountId}
-            onValueChange={(value) => setFormData({ ...formData, accountId: value })}
+            onValueChange={(value) =>
+              setFormData({ ...formData, accountId: value })
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select account" />
@@ -149,10 +148,14 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
         {/* Category Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Category
+          </label>
           <Select
             value={formData.categoryId}
-            onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+            onValueChange={(value) =>
+              setFormData({ ...formData, categoryId: value })
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select category" />
@@ -173,15 +176,19 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
         {/* Transaction Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Type
+          </label>
           <Select
             value={formData.type}
-            onValueChange={(value) => setFormData({ 
-              ...formData, 
-              type: value as "INCOME" | "EXPENSE",
-              // Reset category when type changes as they're filtered by type
-              categoryId: undefined 
-            })}
+            onValueChange={(value) =>
+              setFormData({
+                ...formData,
+                type: value as "INCOME" | "EXPENSE",
+                // Reset category when type changes as they're filtered by type
+                categoryId: undefined,
+              })
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select type" />
@@ -197,7 +204,9 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
         {/* Amount Input */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Amount
+          </label>
           <Input
             type="number"
             step="0.01"
@@ -211,33 +220,46 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
         {/* Description Input */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
           <Input
             type="text"
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             required
           />
         </div>
 
         {/* Transaction Date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Date</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Date
+          </label>
           <Input
             type="date"
             value={formData.transactionDate}
-            onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, transactionDate: e.target.value })
+            }
             required
           />
         </div>
 
         {/* Actions */}
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Updating..." : "Update"}
+          <Button type="submit" disabled={loading} isLoading={loading}>
+            Update
           </Button>
         </div>
       </form>
