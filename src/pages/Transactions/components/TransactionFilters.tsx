@@ -13,7 +13,12 @@ import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { DateRangePicker } from "@/components/DateRangePicker"; // Import the reusable DateRangePicker
 import { useAuth } from "@/contexts/AuthContext";
-import type { Account, Category, TransactionFilters as FilterType, TransactionType } from "@/types";
+import type {
+  Account,
+  Category,
+  TransactionFilters as FilterType,
+  TransactionType,
+} from "@/types";
 import { getCategories } from "@/services/userService";
 
 interface TransactionFiltersProps {
@@ -65,7 +70,11 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   const handleReset = () => {
     const defaultFilters: FilterType = {
       dateRange: {
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+        startDate: new Date(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          1,
+        ).toISOString(),
         endDate: new Date().toISOString(),
       },
     };
@@ -87,133 +96,125 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         />
 
         {/* Account Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Account</label>
-          <Select
-            value={localFilters.accountIds?.[0] || "ALL"}
-            onValueChange={(value) =>
-              setLocalFilters({
-                ...localFilters,
-                accountIds: value === "ALL" ? undefined : [value],
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All accounts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="ALL">All accounts</SelectItem>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={localFilters.accountIds?.[0] || "ALL"}
+          onValueChange={(value) =>
+            setLocalFilters({
+              ...localFilters,
+              accountIds: value === "ALL" ? undefined : [value],
+            })
+          }
+        >
+          <SelectTrigger label="Account" className="w-full">
+            <SelectValue placeholder="All accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="ALL">All accounts</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Category Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
-          <Select
-            value={localFilters.categoryIds?.[0] || "ALL"}
-            onValueChange={(value) =>
-              setLocalFilters({
-                ...localFilters,
-                categoryIds: value === "ALL" ? undefined : [value],
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="ALL">All categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={localFilters.categoryIds?.[0] || "ALL"}
+          onValueChange={(value) =>
+            setLocalFilters({
+              ...localFilters,
+              categoryIds: value === "ALL" ? undefined : [value],
+            })
+          }
+        >
+          <SelectTrigger label="Category" className="w-full">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Transaction Type Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
-          <Select
-            value={localFilters.types?.[0] || "ALL"}
-            onValueChange={(value) =>
-              setLocalFilters({
-                ...localFilters,
-                types: value === "ALL" ? undefined : [value as TransactionType],
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="ALL">All types</SelectItem>
-                <SelectItem value="INCOME">Income</SelectItem>
-                <SelectItem value="EXPENSE">Expense</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={localFilters.types?.[0] || "ALL"}
+          onValueChange={(value) =>
+            setLocalFilters({
+              ...localFilters,
+              types: value === "ALL" ? undefined : [value as TransactionType],
+            })
+          }
+        >
+          <SelectTrigger label="Type" className="w-full">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="ALL">All types</SelectItem>
+              <SelectItem value="INCOME">Income</SelectItem>
+              <SelectItem value="EXPENSE">Expense</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Amount Range Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Amount Range</label>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="number"
-              placeholder="Min amount"
-              value={localFilters.minAmount || ""}
-              onChange={(e) =>
-                setLocalFilters({
-                  ...localFilters,
-                  minAmount: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            />
-            <Input
-              type="number"
-              placeholder="Max amount"
-              value={localFilters.maxAmount || ""}
-              onChange={(e) =>
-                setLocalFilters({
-                  ...localFilters,
-                  maxAmount: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            />
-          </div>
-        </div>
-
-        {/* Recurring Transactions */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="recurring"
-            checked={localFilters.isRecurring || false}
-            onCheckedChange={(checked) =>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="number"
+            label="Min amount"
+            placeholder="Min amount"
+            value={localFilters.minAmount || ""}
+            onChange={(e) =>
               setLocalFilters({
                 ...localFilters,
-                isRecurring: checked as boolean,
+                minAmount: e.target.value ? Number(e.target.value) : undefined,
               })
             }
           />
-          <label
-            htmlFor="recurring"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Show only recurring transactions
-          </label>
+          <Input
+            type="number"
+            label="Max amount"
+            placeholder="Max amount"
+            value={localFilters.maxAmount || ""}
+            onChange={(e) =>
+              setLocalFilters({
+                ...localFilters,
+                maxAmount: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+          />
+        </div>
+
+        {/* Recurring Transactions */}
+        <div className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+          <div className="flex items-center space-x-3">
+            <Checkbox
+              id="active"
+              label="Recurring"
+              checked={localFilters.isRecurring || false}
+              onCheckedChange={(checked) =>
+                setLocalFilters({
+                  ...localFilters,
+                  isRecurring: checked as boolean,
+                })
+              }
+            />
+            <div className="flex flex-col">
+              <p className="text-xs text-gray-500">
+                Show transactions that are recurring
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}

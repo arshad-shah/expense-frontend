@@ -2,16 +2,11 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBudgets } from "@/services/BudgetService";
 import { getTransactions } from "@/services/TransactionService";
-import type { 
-  Budget,
-  BudgetFilters,
-  Transaction,
-  BudgetStatus,
-} from "@/types";
+import type { Budget, BudgetFilters, Transaction, BudgetStatus } from "@/types";
 import PageLoader from "@/components/PageLoader";
 import ErrorState from "@/components/ErrorState";
 import BudgetHeader from "./Components/BudgetHeader";
-import {BudgetFilters as Filters} from "./Components/BudgetFilters";
+import { BudgetFilters as Filters } from "./Components/BudgetFilters";
 import EmptyState from "@/components/EmptyState";
 import { BudgetCard } from "./Components/BudgetCard";
 import AddBudgetModal from "./Components/AddBudgetModal";
@@ -49,61 +44,70 @@ const Budgets: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const calculateBudgetPerformance = useCallback((
-    budget: Budget,
-    transactions: Transaction[]
-  ): BudgetPerformance => {
-    // Filter transactions that belong to the budget's categories
-    const relevantTransactions = transactions.filter(t =>
-      Object.values(budget.categories).some(c => c.categoryId === t.categoryId)
-    );
+  const calculateBudgetPerformance = useCallback(
+    (budget: Budget, transactions: Transaction[]): BudgetPerformance => {
+      // Filter transactions that belong to the budget's categories
+      const relevantTransactions = transactions.filter((t) =>
+        Object.values(budget.categories).some(
+          (c) => c.categoryId === t.categoryId,
+        ),
+      );
 
-    const spent = relevantTransactions.reduce(
-      (total, transaction) => 
-        transaction.type === 'EXPENSE' ? total + transaction.amount : total,
-      0
-    );
-    
+      const spent = relevantTransactions.reduce(
+        (total, transaction) =>
+          transaction.type === "EXPENSE" ? total + transaction.amount : total,
+        0,
+      );
 
-    const allocated = budget.amount;
-    const remaining = allocated - spent;
-    const percentageUsed = (spent / allocated) * 100;
+      const allocated = budget.amount;
+      const remaining = allocated - spent;
+      const percentageUsed = (spent / allocated) * 100;
 
-    // Calculate performance for each category
-    const categoryPerformance = Object.entries(budget.categories).reduce((acc, [categoryId, allocation]) => {
-      const categoryTransactions = relevantTransactions.filter(t => t.categoryId === categoryId);
-      const categorySpent = categoryTransactions.reduce((total, t) => total + t.amount, 0);
-      
-      acc[categoryId] = {
-        id: categoryId,
-        name: allocation.categoryId, // You might want to fetch category names separately
-        allocated: allocation.amount,
-        spent: categorySpent,
-        percentageUsed: (categorySpent / allocation.amount) * 100
+      // Calculate performance for each category
+      const categoryPerformance = Object.entries(budget.categories).reduce(
+        (acc, [categoryId, allocation]) => {
+          const categoryTransactions = relevantTransactions.filter(
+            (t) => t.categoryId === categoryId,
+          );
+          const categorySpent = categoryTransactions.reduce(
+            (total, t) => total + t.amount,
+            0,
+          );
+
+          acc[categoryId] = {
+            id: categoryId,
+            name: allocation.categoryId, // You might want to fetch category names separately
+            allocated: allocation.amount,
+            spent: categorySpent,
+            percentageUsed: (categorySpent / allocation.amount) * 100,
+          };
+
+          return acc;
+        },
+        {} as Record<string, CategoryPerformance>,
+      );
+
+      // Determine budget status
+      let status: BudgetStatus = "ON_TRACK";
+      if (spent > allocated) {
+        status = "EXCEEDED";
+      } else if (percentageUsed > 80) {
+        status = "WARNING";
+      }
+
+      return {
+        budgetId: budget.id,
+        budgetName: budget.name,
+        allocated,
+        spent,
+        remaining,
+        percentageUsed,
+        status,
+        categoryPerformance,
       };
-
-      return acc;
-    }, {} as Record<string, CategoryPerformance>);
-
-    // Determine budget status
-    let status: BudgetStatus = "ON_TRACK";
-    if (spent > allocated) {
-      status = "EXCEEDED";
-    } else if (percentageUsed > 80) {
-      status = "WARNING";
-    }
-
-    return {
-      budgetId: budget.id,
-      budgetName: budget.name,
-      allocated,
-      spent,
-      remaining,
-      percentageUsed,
-      status,
-      categoryPerformance
-    };
-  }, []);
+    },
+    [],
+  );
 
   const fetchBudgetsAndPerformance = useCallback(async () => {
     if (!user?.id) return;
@@ -114,17 +118,21 @@ const Budgets: React.FC = () => {
 
       // Fetch budgets
       const budgetsResponse = await getBudgets(user.id, filters);
-      
+
       if (!budgetsResponse.data || budgetsResponse.error) {
-        throw new Error(budgetsResponse.error || 'Failed to fetch budgets');
+        throw new Error(budgetsResponse.error || "Failed to fetch budgets");
       }
 
       const fetchedBudgets = budgetsResponse.data;
 
       // Get all unique category IDs from budgets
-      const categoryIds = [...new Set(
-        fetchedBudgets.flatMap(budget => Object.values(budget.categories).map(c => c.categoryId))
-      )];
+      const categoryIds = [
+        ...new Set(
+          fetchedBudgets.flatMap((budget) =>
+            Object.values(budget.categories).map((c) => c.categoryId),
+          ),
+        ),
+      ];
 
       if (categoryIds.length === 0) {
         setBudgets(fetchedBudgets);
@@ -133,22 +141,28 @@ const Budgets: React.FC = () => {
       }
 
       // Fetch transactions for the categories
-      const transactionsResponse = await getTransactions(user.id, {
-        categoryIds,
-        dateRange: filters.dateRange,
-        types: ["EXPENSE"]
-      },
-      1,
-      1000
-    );
-      
+      const transactionsResponse = await getTransactions(
+        user.id,
+        {
+          categoryIds,
+          dateRange: filters.dateRange,
+          types: ["EXPENSE"],
+        },
+        1,
+        1000,
+      );
 
       if (!transactionsResponse.data || transactionsResponse.error) {
-        throw new Error(transactionsResponse.error || 'Failed to fetch transactions');
+        throw new Error(
+          transactionsResponse.error || "Failed to fetch transactions",
+        );
       }
       // Calculate performance for each budget
-      const calculatedPerformance = fetchedBudgets.map(budget =>
-        calculateBudgetPerformance(budget, transactionsResponse.data?.items || [])
+      const calculatedPerformance = fetchedBudgets.map((budget) =>
+        calculateBudgetPerformance(
+          budget,
+          transactionsResponse.data?.items || [],
+        ),
       );
 
       setBudgets(fetchedBudgets);
@@ -156,9 +170,9 @@ const Budgets: React.FC = () => {
     } catch (err) {
       console.error("Error fetching budgets and performance:", err);
       setError(
-        err instanceof Error 
-          ? err.message 
-          : "Failed to fetch budget data. Please try again later."
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch budget data. Please try again later.",
       );
     } finally {
       setLoading(false);
@@ -190,7 +204,7 @@ const Budgets: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-2">
+    <div className="space-y-6 p-4">
       <BudgetHeader
         onOpenFilter={handleOpenFilter}
         onAddBudget={handleOpenAddModal}
@@ -210,9 +224,9 @@ const Budgets: React.FC = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {budgets.map(budget => {
+          {budgets.map((budget) => {
             const budgetPerformance = performance.find(
-              p => p.budgetId === budget.id
+              (p) => p.budgetId === budget.id,
             );
 
             if (!budgetPerformance) return null;

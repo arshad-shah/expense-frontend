@@ -1,14 +1,14 @@
 import React, { useState, useRef } from "react";
-import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Edit2, 
-  Trash2, 
-  MoreVertical, 
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Edit2,
+  Trash2,
+  MoreVertical,
   ChevronDown,
   PiggyBank as Bank,
   Calendar,
-  Tag
+  Tag,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "@/components/EmptyState";
@@ -17,7 +17,7 @@ import type { Transaction, Category, Account } from "@/types";
 import EditTransactionModal from "./EditTransactionModal";
 import { Dropdown, type DropdownItemType } from "@/components/Dropdown";
 import { Button } from "@/components/Button";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { deleteTransaction } from "@/services/TransactionService";
 
@@ -38,19 +38,18 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   onEdit,
   onDelete,
 }) => {
-  
   const items: DropdownItemType[] = [
     {
       icon: Edit2,
-      label: "Edit Transaction",
+      label: "Edit",
       onClick: () => onEdit(transaction),
     },
     {
       icon: Trash2,
-      label: "Delete Transaction",
+      label: "Delete",
       onClick: () => onDelete(transaction),
       variant: "danger",
-    }
+    },
   ];
 
   return (
@@ -64,22 +63,19 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
         aria-label="Transaction options"
         size="icon"
         variant="ghost"
-        className="hover:bg-gray-100"
       >
         <MoreVertical className="h-5 w-5 text-gray-500" />
       </Button>
 
-      {isOpen && (<Dropdown
-        show={true}
-        onClose={() => onToggle()}
-        items={items}
-        position="right"
-        size="sm"
-        width="md"
-        className="shadow-lg shadow-gray-200/20"
-        alignTo={buttonRef.current}
-        style={{ zIndex: 1000 }}
-      />)}
+      {isOpen && (
+        <Dropdown
+          show={true}
+          onClose={() => onToggle()}
+          items={items}
+          alignTo={buttonRef.current}
+          style={{ zIndex: 1000 }}
+        />
+      )}
     </div>
   );
 };
@@ -90,9 +86,9 @@ const TransactionTypeIcon: React.FC<{ type: string }> = ({ type }) => (
     animate={{ scale: 1 }}
     className={cn(
       "flex items-center justify-center w-10 h-10 rounded-xl",
-      type === "INCOME" 
-        ? "bg-emerald-50 text-emerald-600" 
-        : "bg-rose-50 text-rose-600"
+      type === "INCOME"
+        ? "bg-emerald-50 text-emerald-600"
+        : "bg-rose-50 text-rose-600",
     )}
   >
     {type === "INCOME" ? (
@@ -117,24 +113,29 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onUpdate,
 }) => {
   const { user } = useAuth();
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [expandedTransaction, setExpandedTransaction] = useState<string | null>(null);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const actionButtonRefs = useRef<{ [key: string]: React.RefObject<HTMLButtonElement> }>({});
+  const [expandedTransaction, setExpandedTransaction] = useState<string | null>(
+    null,
+  );
+  const [transactionToDelete, setTransactionToDelete] =
+    useState<Transaction | null>(null);
+  const actionButtonRefs = useRef<{
+    [key: string]: React.RefObject<HTMLButtonElement>;
+  }>({});
 
   // Initialize refs for action buttons
   React.useEffect(() => {
-    transactions.forEach(transaction => {
+    transactions.forEach((transaction) => {
       if (!actionButtonRefs.current[transaction.id]) {
         actionButtonRefs.current[transaction.id] = React.createRef();
       }
     });
   }, [transactions]);
 
-  const getCategory = (categoryId: string) => 
-    categories.find(category => category.id === categoryId);
+  const getCategory = (categoryId: string) =>
+    categories.find((category) => category.id === categoryId);
 
   const handleDelete = async () => {
     if (!user?.id || !transactionToDelete) return;
@@ -143,36 +144,19 @@ const TransactionList: React.FC<TransactionListProps> = ({
       const response = await deleteTransaction(
         user.id,
         transactionToDelete.accountId,
-        transactionToDelete.id
+        transactionToDelete.id,
       );
 
       if (response.status === 200) {
         onUpdate();
       } else {
-        throw new Error(response.error || 'Failed to delete transaction');
+        throw new Error(response.error || "Failed to delete transaction");
       }
     } catch (error) {
       console.error("Error deleting transaction:", error);
     } finally {
       setTransactionToDelete(null);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences?.currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(amount));
   };
 
   if (transactions.length === 0) {
@@ -213,20 +197,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {transactions.map((transaction) => (
-              <motion.tr 
-                key={transaction.id}
-                onHoverStart={() => setHoveredRow(transaction.id)}
-                onHoverEnd={() => setHoveredRow(null)}
-                className={cn(
-                  "transition-colors duration-150",
-                  hoveredRow === transaction.id ? "bg-gray-50" : "hover:bg-gray-50"
-                )}
-              >
+              <tr>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 text-gray-400 mr-2" />
                     <span className="text-sm text-gray-600">
-                      {formatDate(transaction.transactionDate)}
+                      {formatDate(transaction.transactionDate, {
+                        shortFormat: true,
+                      })}
                     </span>
                   </div>
                 </td>
@@ -239,14 +217,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span 
+                  <span
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-sm",
-                      hoveredRow === transaction.id ? "opacity-100" : "opacity-90"
                     )}
                     style={{
-                      backgroundColor: `${getCategory(transaction.categoryId)?.color || '#6B7280'}15`,
-                      color: getCategory(transaction.categoryId)?.color || '#6B7280'
+                      backgroundColor: `${getCategory(transaction.categoryId)?.color || "#6B7280"}15`,
+                      color:
+                        getCategory(transaction.categoryId)?.color || "#6B7280",
                     }}
                   >
                     <Tag className="w-3 h-3" />
@@ -265,34 +243,35 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   <span
                     className={cn(
                       "text-sm font-medium px-3 py-1 rounded-lg",
-                      transaction.type === "INCOME" 
-                        ? "text-emerald-700 bg-emerald-50" 
-                        : "text-rose-700 bg-rose-50"
+                      transaction.type === "INCOME"
+                        ? "text-emerald-700 bg-emerald-50"
+                        : "text-rose-700 bg-rose-50",
                     )}
                   >
                     {transaction.type === "INCOME" ? "+" : "-"}
-                    {formatAmount(transaction.amount)}
+                    {formatCurrency(
+                      transaction.amount,
+                      user?.preferences.currency || "USD",
+                    )}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: hoveredRow === transaction.id ? 1 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ActionMenu
-                      transaction={transaction}
-                      buttonRef={actionButtonRefs.current[transaction.id]}
-                      isOpen={activeDropdown === transaction.id}
-                      onToggle={() => setActiveDropdown(
-                        activeDropdown === transaction.id ? null : transaction.id
-                      )}
-                      onEdit={setEditingTransaction}
-                      onDelete={setTransactionToDelete}
-                    />
-                  </motion.div>
+                  <ActionMenu
+                    transaction={transaction}
+                    buttonRef={actionButtonRefs.current[transaction.id]}
+                    isOpen={activeDropdown === transaction.id}
+                    onToggle={() =>
+                      setActiveDropdown(
+                        activeDropdown === transaction.id
+                          ? null
+                          : transaction.id,
+                      )
+                    }
+                    onEdit={setEditingTransaction}
+                    onDelete={setTransactionToDelete}
+                  />
                 </td>
-              </motion.tr>
+              </tr>
             ))}
           </tbody>
         </table>
@@ -304,9 +283,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
           <div key={transaction.id}>
             <motion.button
               className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50/80"
-              onClick={() => setExpandedTransaction(
-                expandedTransaction === transaction.id ? null : transaction.id
-              )}
+              onClick={() =>
+                setExpandedTransaction(
+                  expandedTransaction === transaction.id
+                    ? null
+                    : transaction.id,
+                )
+              }
               initial={false}
             >
               <div className="flex items-center space-x-3">
@@ -325,16 +308,21 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <span
                   className={cn(
                     "text-sm font-medium px-2.5 py-1 rounded-lg",
-                    transaction.type === "INCOME" 
-                      ? "text-emerald-700 bg-emerald-50" 
-                      : "text-rose-700 bg-rose-50"
+                    transaction.type === "INCOME"
+                      ? "text-emerald-700 bg-emerald-50"
+                      : "text-rose-700 bg-rose-50",
                   )}
                 >
                   {transaction.type === "INCOME" ? "+" : "-"}
-                  {formatAmount(transaction.amount)}
+                  {formatCurrency(
+                    transaction.amount,
+                    user?.preferences.currency || "USD",
+                  )}
                 </span>
                 <motion.div
-                  animate={{ rotate: expandedTransaction === transaction.id ? 180 : 0 }}
+                  animate={{
+                    rotate: expandedTransaction === transaction.id ? 180 : 0,
+                  }}
                   transition={{ duration: 0.2 }}
                 >
                   <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -357,11 +345,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         <Tag className="w-4 h-4 text-gray-400" />
                         Category
                       </span>
-                      <span 
+                      <span
                         className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                         style={{
-                          backgroundColor: `${getCategory(transaction.categoryId)?.color || '#6B7280'}15`,
-                          color: getCategory(transaction.categoryId)?.color || '#6B7280'
+                          backgroundColor: `${getCategory(transaction.categoryId)?.color || "#6B7280"}15`,
+                          color:
+                            getCategory(transaction.categoryId)?.color ||
+                            "#6B7280",
                         }}
                       >
                         {transaction.categoryName}
@@ -381,9 +371,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         transaction={transaction}
                         buttonRef={actionButtonRefs.current[transaction.id]}
                         isOpen={activeDropdown === transaction.id}
-                        onToggle={() => setActiveDropdown(
-                          activeDropdown === transaction.id ? null : transaction.id
-                        )}
+                        onToggle={() =>
+                          setActiveDropdown(
+                            activeDropdown === transaction.id
+                              ? null
+                              : transaction.id,
+                          )
+                        }
                         onEdit={setEditingTransaction}
                         onDelete={setTransactionToDelete}
                       />
@@ -402,7 +396,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
           onClose={() => setEditingTransaction(null)}
           transaction={editingTransaction}
           onUpdate={onUpdate}
-          categories={Array.from(new Set(categories.filter((category): category is Category => category !== undefined)))}
+          categories={Array.from(
+            new Set(
+              categories.filter(
+                (category): category is Category => category !== undefined,
+              ),
+            ),
+          )}
           accounts={accounts}
         />
       )}

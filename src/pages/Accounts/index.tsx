@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { 
-  CreditCard, 
-  PiggyBank, 
-  DollarSign, 
-  TrendingUp, 
-  AlertCircle, 
+import {
+  CreditCard,
+  PiggyBank,
+  DollarSign,
+  TrendingUp,
+  AlertCircle,
   Briefcase,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import AccountCard from "./components/AccountCard";
 import AddAccountModal from "./components/AddAccountModal";
@@ -20,6 +20,11 @@ import ErrorState from "@/components/ErrorState";
 import { getTransactions } from "@/services/TransactionService";
 import AccountHeader from "@/pages/Accounts/components/AccountHeader";
 import { motion } from "framer-motion";
+import {
+  ErrorResponse,
+  FirebaseErrorHandler,
+} from "@/lib/firebase-error-handler";
+import { formatCurrency } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 9; // 3x3 grid
 
@@ -30,18 +35,18 @@ const Accounts: React.FC = () => {
     total: 0,
     page: 1,
     limit: ITEMS_PER_PAGE,
-    hasMore: false
+    hasMore: false,
   });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorResponse | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const fetchAccounts = async (page: number = 1) => {
     try {
       if (!user?.id) return;
-      
+
       if (page === 1) {
         setLoading(true);
       } else {
@@ -49,12 +54,12 @@ const Accounts: React.FC = () => {
       }
 
       const response = await getAccounts(user.id, page, ITEMS_PER_PAGE);
-      
+
       if (response.status === 200 && response.data) {
         if (page === 1) {
           setAccountsData(response.data);
         } else {
-          setAccountsData(prev => ({
+          setAccountsData((prev) => ({
             items: [...prev.items, ...(response.data?.items || [])],
             total: response.data?.total || prev.total,
             page: response.data?.page || prev.page,
@@ -63,11 +68,12 @@ const Accounts: React.FC = () => {
           }));
         }
       } else {
-        setError(response.error || "Failed to load accounts");
+        setError(
+          FirebaseErrorHandler.firestore(response.error, "load accounts"),
+        );
       }
     } catch (err) {
-      setError("Failed to load accounts");
-      console.error("Error fetching accounts:", err);
+      setError(FirebaseErrorHandler.firestore(err, "load accounts"));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -76,24 +82,28 @@ const Accounts: React.FC = () => {
 
   const fetchTransactions = async () => {
     if (!user?.id) return;
-    
+
     try {
       // Fetch last 2 months of transactions
       const now = new Date();
-      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      
+      const startOfLastMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1,
+      );
+
       const response = await getTransactions(user.id, {
         dateRange: {
           startDate: startOfLastMonth.toISOString(),
-          endDate: now.toISOString()
-        }
+          endDate: now.toISOString(),
+        },
       });
-      
+
       if (response.status === 200 && response.data) {
         setTransactions(response.data.items);
       }
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      setError(FirebaseErrorHandler.firestore(error, "load transactions"));
     }
   };
 
@@ -126,18 +136,13 @@ const Accounts: React.FC = () => {
         return AlertCircle;
     }
   };
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences?.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const getTotalBalance = () => {
-    const totalBalance = accountsData.items.reduce((sum, account) => sum + account.balance, 0);
-    return formatCurrency(totalBalance);
+    const totalBalance = accountsData.items.reduce(
+      (sum, account) => sum + account.balance,
+      0,
+    );
+    return formatCurrency(totalBalance, user?.preferences.currency || "USD");
   };
 
   if (loading) {
@@ -145,27 +150,32 @@ const Accounts: React.FC = () => {
   }
 
   if (error) {
-    return <ErrorState message="Failed to load accounts" onRetry={() => fetchAccounts()} />;
+    return (
+      <ErrorState
+        message="Failed to load accounts"
+        onRetry={() => fetchAccounts()}
+      />
+    );
   }
 
   return (
-    <div className="space-y-6 p-2">
+    <div className="space-y-6 p-4">
       <AccountHeader onAddAccount={() => setIsAddModalOpen(true)} />
 
       {/* Total Balance Card */}
       {accountsData.items.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative rounded-xl shadow-lg overflow-hidden"
         >
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500" />
-          
+
           {/* Decorative elements */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/50 via-transparent to-cyan-500/50 opacity-30" />
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 blur-xl opacity-20" />
-          
+
           {/* Content */}
           <div className="relative p-6 text-white">
             <div className="flex items-center gap-3 mb-4">
@@ -174,14 +184,15 @@ const Accounts: React.FC = () => {
               </div>
               <h2 className="text-lg font-medium">Total Balance</h2>
             </div>
-            
+
             <p className="text-3xl font-bold tracking-tight">
               {getTotalBalance()}
             </p>
-            
+
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm opacity-75">
-                Across {accountsData.total} account{accountsData.total !== 1 ? "s" : ""}
+                Across {accountsData.total} account
+                {accountsData.total !== 1 ? "s" : ""}
               </span>
             </div>
           </div>
@@ -203,11 +214,13 @@ const Accounts: React.FC = () => {
                 account={account}
                 icon={getAccountTypeIcon(account.accountType)}
                 onUpdate={() => fetchAccounts(1)}
-                transactions={transactions.filter(t => t.accountId === account.id)}
+                transactions={transactions.filter(
+                  (t) => t.accountId === account.id,
+                )}
               />
             ))}
           </div>
-          
+
           {/* Load More Button */}
           {accountsData.hasMore && (
             <div className="flex justify-center">
@@ -222,7 +235,7 @@ const Accounts: React.FC = () => {
                     Loading...
                   </>
                 ) : (
-                  'Load More Accounts'
+                  "Load More Accounts"
                 )}
               </Button>
             </div>

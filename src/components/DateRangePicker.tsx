@@ -1,8 +1,14 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Label } from "./Label";
 
 interface DateRange {
   startDate: string;
@@ -69,6 +75,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         onClick={decreaseMonth}
         disabled={prevMonthButtonDisabled}
         className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+        aria-label="Previous Month"
       >
         <ChevronLeft className="h-5 w-5 text-gray-600" />
       </motion.button>
@@ -83,6 +90,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         onClick={increaseMonth}
         disabled={nextMonthButtonDisabled}
         className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+        aria-label="Next Month"
       >
         <ChevronRight className="h-5 w-5 text-gray-600" />
       </motion.button>
@@ -112,7 +120,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           className="text-violet-500 mr-3"
           whileHover={{ rotate: 15 }}
         >
-          <CalendarDays className="h-5 w-5" />
+          <CalendarDays data-testid="Calender-icon" className="h-5 w-5" />
         </motion.span>
         <span className="flex-1 text-sm font-medium text-gray-700">
           {value}
@@ -136,6 +144,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="block text-base font-semibold text-gray-900"
+            aria-label={label}
           >
             {label}
           </motion.label>
@@ -145,9 +154,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       {/* Date Pickers Container */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-600">
-            Start Date
-          </label>
+          <Label aria-label="Start Date">Start Date</Label>
           <DatePicker
             selected={new Date(dateRange.startDate)}
             onChange={handleStartDateChange}
@@ -177,9 +184,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-600">
-            End Date
-          </label>
+          <Label aria-label="End Date">End Date</Label>
           <DatePicker
             selected={new Date(dateRange.endDate)}
             onChange={handleEndDateChange}
@@ -226,19 +231,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 animate={{ opacity: 1 }}
                 className="text-sm text-red-600 flex items-center gap-1.5"
               >
-                <svg
-                  className="h-4 w-4 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <AlertCircleIcon size={16} />
                 <span className="font-medium">{error}</span>
               </motion.p>
             ) : (
@@ -360,5 +353,3 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     </motion.div>
   );
 };
-
-export default DateRangePicker;

@@ -33,13 +33,19 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
   // Ensure dates are properly formatted when component mounts or filters change
   useEffect(() => {
     const initialDateRange = {
-      startDate: filters.dateRange?.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
-      endDate: filters.dateRange?.endDate || new Date().toISOString()
+      startDate:
+        filters.dateRange?.startDate ||
+        new Date(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          1,
+        ).toISOString(),
+      endDate: filters.dateRange?.endDate || new Date().toISOString(),
     };
 
     setLocalFilters({
       ...filters,
-      dateRange: initialDateRange
+      dateRange: initialDateRange,
     });
   }, [filters]);
 
@@ -48,13 +54,17 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
     const formattedFilters = {
       ...localFilters,
       dateRange: {
-        startDate: localFilters.dateRange?.startDate 
+        startDate: localFilters.dateRange?.startDate
           ? new Date(localFilters.dateRange.startDate).toISOString()
-          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+          : new Date(
+              new Date().getFullYear(),
+              new Date().getMonth(),
+              1,
+            ).toISOString(),
         endDate: localFilters.dateRange?.endDate
           ? new Date(localFilters.dateRange.endDate).toISOString()
-          : new Date().toISOString()
-      }
+          : new Date().toISOString(),
+      },
     };
     onApplyFilters(formattedFilters);
     onClose();
@@ -63,7 +73,11 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
   const handleReset = () => {
     const defaultFilters: FilterType = {
       dateRange: {
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+        startDate: new Date(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          1,
+        ).toISOString(),
         endDate: new Date().toISOString(),
       },
     };
@@ -72,27 +86,31 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
     onClose();
   };
 
-  const handleDateRangeChange = (dateRange: { startDate: string; endDate: string }) => {
+  const handleDateRangeChange = (dateRange: {
+    startDate: string;
+    endDate: string;
+  }) => {
     try {
       // Ensure both dates are valid before updating
       const start = new Date(dateRange.startDate);
       const end = new Date(dateRange.endDate);
-      
-      setLocalFilters(prev => ({
+
+      setLocalFilters((prev) => ({
         ...prev,
         dateRange: {
           startDate: start.toISOString(),
-          endDate: end.toISOString()
-        }
+          endDate: end.toISOString(),
+        },
       }));
     } catch (error) {
-      console.error('Invalid date format:', error);
+      console.error("Invalid date format:", error);
     }
   };
 
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (localFilters.dateRange?.startDate || localFilters.dateRange?.endDate) count++;
+    if (localFilters.dateRange?.startDate || localFilters.dateRange?.endDate)
+      count++;
     if (localFilters.period) count++;
     if (localFilters.isActive) count++;
     return count;
@@ -104,7 +122,9 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
         {/* Header with active filters count */}
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Budget Filters</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Budget Filters
+            </h2>
             <p className="text-sm text-gray-500">
               {getActiveFiltersCount()} active filters
             </p>
@@ -129,10 +149,16 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
               <h3 className="font-medium">Date Range</h3>
             </div>
             <DateRangePicker
-              dateRange={localFilters.dateRange || {
-                startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
-                endDate: new Date().toISOString()
-              }}
+              dateRange={
+                localFilters.dateRange || {
+                  startDate: new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth(),
+                    1,
+                  ).toISOString(),
+                  endDate: new Date().toISOString(),
+                }
+              }
               onChange={handleDateRangeChange}
             />
           </div>
@@ -148,7 +174,7 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
               onValueChange={(value) =>
                 setLocalFilters({
                   ...localFilters,
-                  period: value === "ALL" ? undefined : value as BudgetPeriod,
+                  period: value === "ALL" ? undefined : (value as BudgetPeriod),
                 })
               }
             >
@@ -178,6 +204,7 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
               <div className="flex items-center space-x-3">
                 <Checkbox
                   id="active"
+                  label="Active Budgets"
                   checked={localFilters.isActive || false}
                   onCheckedChange={(checked) =>
                     setLocalFilters({
@@ -187,12 +214,6 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
                   }
                 />
                 <div className="flex flex-col">
-                  <label
-                    htmlFor="active"
-                    className="text-sm font-medium text-gray-700 cursor-pointer"
-                  >
-                    Active Budgets Only
-                  </label>
                   <p className="text-xs text-gray-500">
                     Show budgets that are currently active
                   </p>
@@ -204,14 +225,13 @@ export const BudgetFilters: React.FC<BudgetFiltersProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-          >
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleApply} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button
+            onClick={handleApply}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
             Apply Filters
           </Button>
         </div>

@@ -1,8 +1,8 @@
 import React from "react";
-import { 
-  AlertCircle, 
-  CheckCircle2, 
-  Info, 
+import {
+  AlertCircle,
+  CheckCircle2,
+  Info,
   XCircle,
   X as XIcon,
   ExternalLink,
@@ -10,11 +10,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/Button";
 
-type AlertVariant = 
-  | "success" 
-  | "error" 
-  | "warning" 
-  | "info" 
+type AlertVariant =
+  | "success"
+  | "error"
+  | "warning"
+  | "info"
   | "neutral"
   | "promotional";
 
@@ -45,6 +45,7 @@ interface AlertProps {
   link?: {
     href: string;
     label: string;
+    onClick?: () => void;
   };
 }
 
@@ -102,7 +103,8 @@ const Alert: React.FC<AlertProps> = ({
       icon: <Info className="w-5 h-5" />,
     },
     promotional: {
-      containerClass: "bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200",
+      containerClass:
+        "bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200",
       iconClass: "text-purple-600",
       titleClass: "text-purple-800",
       textClass: "text-purple-700",
@@ -116,79 +118,84 @@ const Alert: React.FC<AlertProps> = ({
   return (
     <div
       className={cn(
-        "relative flex gap-3 p-4 rounded-lg border shadow-sm",
+        "flex gap-3 p-4 rounded-lg border shadow-sm",
         variantStyles.containerClass,
-        className
+        className,
       )}
       role="alert"
     >
-      {/* Icon */}
-      <div className={cn("flex-shrink-0", variantStyles.iconClass)}>
-        {icon || variantStyles.icon}
-      </div>
+      <div className="flex gap-4 justify-between w-full">
+        {/* Icon */}
+        <div className={cn("flex-shrink-0", variantStyles.iconClass)}>
+          {icon || variantStyles.icon}
+        </div>
 
-      {/* Content */}
-      <div className="flex-1">
-        {title && (
-          <h3 className={cn("font-medium mb-1", variantStyles.titleClass)}>
-            {title}
-          </h3>
-        )}
-        <div className={cn("text-sm", variantStyles.textClass)}>{children}</div>
+        {/* Content */}
+        <div className="flex-1">
+          {title && (
+            <h3 className={cn("font-medium mb-1", variantStyles.titleClass)}>
+              {title}
+            </h3>
+          )}
 
-        {/* Actions */}
-        {(actions.length > 0 || link) && (
-          <div className="flex gap-3 mt-3">
-            {actions.map((action, index) => (
-              <button
-                key={index}
-                onClick={action.onClick}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                  action.variant === "secondary"
-                    ? variantStyles.buttonClass
-                    : "bg-white border shadow-sm hover:shadow-md"
-                )}
-              >
-                {action.label}
-              </button>
-            ))}
-            {link && (
-              <a
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "inline-flex items-center gap-1 text-sm",
-                  variantStyles.textClass,
-                  "hover:underline"
-                )}
-              >
-                {link.label}
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
+          <div className={cn("text-sm", variantStyles.textClass)}>
+            {children}
           </div>
+
+          {/* Actions */}
+          {(actions.length > 0 || link) && (
+            <div className="flex gap-3 mt-3">
+              {actions.map((action, index) => (
+                <Button
+                  key={index}
+                  onClick={action.onClick}
+                  size="sm"
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    action.variant === "secondary"
+                      ? variantStyles.buttonClass
+                      : "bg-white border shadow-sm hover:shadow-md",
+                  )}
+                >
+                  {action.label}
+                </Button>
+              ))}
+              {link && (
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={link.onClick}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-sm",
+                    variantStyles.textClass,
+                    "hover:underline",
+                  )}
+                >
+                  {link.label}
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
+        {/* Dismiss button */}
+        {dismissible && (
+          <Button
+            onClick={onDismiss}
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
+              variantStyles.buttonClass,
+            )}
+            aria-label="Dismiss alert"
+          >
+            <XIcon className="w-4 h-4" />
+          </Button>
         )}
       </div>
-
-      {/* Dismiss button */}
-      {dismissible && (
-        <Button
-          onClick={onDismiss}
-          variant="ghost"
-          size="icon"
-          className={
-            cn(
-              "absolute top-4 right-4 p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
-              variantStyles.buttonClass
-            )
-          }
-          aria-label="Dismiss alert"
-        >
-          <XIcon className="w-4 h-4" />
-        </Button>
-      )}
     </div>
   );
 };

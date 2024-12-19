@@ -1,7 +1,7 @@
-import React from 'react';
-import { Plus, CreditCard } from 'lucide-react';
-import { Button } from '@/components/Button';
-import { motion } from 'framer-motion';
+import React from "react";
+import { Plus, CreditCard } from "lucide-react";
+import { Button } from "@/components/Button";
+import { motion } from "framer-motion";
 
 interface AccountHeaderProps {
   onAddAccount: () => void;
@@ -10,7 +10,7 @@ interface AccountHeaderProps {
 
 const AccountHeader: React.FC<AccountHeaderProps> = ({
   onAddAccount,
-  disableAdd = false
+  disableAdd = false,
 }) => {
   return (
     <div className="relative">
@@ -19,7 +19,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
 
       <div className="relative sm:py-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         {/* Title Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex-1 min-w-0"
@@ -32,25 +32,19 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
               Accounts
             </h1>
           </div>
-          <p className="mt-1 text-sm text-gray-500 hidden sm:flex items-center gap-2">
-            Manage your financial accounts
-          </p>
         </motion.div>
-        
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           {/* Mobile view */}
           <div className="sm:hidden">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="w-full"
-            >
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full">
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={onAddAccount}
                 disabled={disableAdd}
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg shadow-blue-100"
+                fullWidth
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Account
@@ -60,8 +54,8 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
 
           {/* Desktop view */}
           <div className="hidden sm:block">
-            <motion.div 
-              whileHover={{ scale: 1.02 }} 
+            <motion.div
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >

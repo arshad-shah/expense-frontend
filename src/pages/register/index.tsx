@@ -5,11 +5,9 @@ import {
   Mail,
   Lock,
   User,
-  UserPlus,
   AlertCircle,
   ArrowLeft,
   DollarSign,
-  Layout,
 } from "lucide-react";
 import { Currency } from "@/types";
 import { Button } from "@/components/Button";
@@ -22,7 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select";
-import { cn } from "@/lib/utils";
+import { CURRENCY, VALIDATION_RULES } from "@/constants";
+import { FirebaseErrorHandler } from "@/lib/firebase-error-handler";
+import PasswordRequirements from "@/components/PasswordRequirements";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -40,33 +40,6 @@ const Register = () => {
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  const currencies = [
-    { value: "USD", label: "US Dollar (USD)" },
-    { value: "EUR", label: "Euro (EUR)" },
-    { value: "GBP", label: "British Pound (GBP)" },
-    { value: "JPY", label: "Japanese Yen (JPY)" },
-    { value: "CAD", label: "Canadian Dollar (CAD)" },
-    { value: "AUD", label: "Australian Dollar (AUD)" },
-    { value: "CNY", label: "Chinese Yuan (CNY)" },
-  ];
-
-  const passwordRequirements = [
-    {
-      label: "At least one uppercase letter",
-      validator: (p: string) => /[A-Z]/.test(p),
-    },
-    {
-      label: "At least one lowercase letter",
-      validator: (p: string) => /[a-z]/.test(p),
-    },
-    { label: "At least one number", validator: (p: string) => /[0-9]/.test(p) },
-    {
-      label: "At least one special character",
-      validator: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p),
-    },
-    { label: "Minimum 8 characters", validator: (p: string) => p.length >= 8 },
-  ];
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -77,27 +50,14 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      setError("Please enter a valid email address");
-      return false;
-    }
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      setError("Please enter both first and last names");
-      return false;
-    }
-    if (
-      !passwordRequirements.every((req) => req.validator(formData.password))
-    ) {
-      setError("Password does not meet all requirements");
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return false;
+    for (const rule of Object.values(VALIDATION_RULES)) {
+      if (!rule.test(formData)) {
+        setError(rule.message);
+        return false;
+      }
     }
     return true;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -121,7 +81,7 @@ const Register = () => {
       );
       navigate("/");
     } catch (err: unknown) {
-      setError((err as Error).message || "Failed to create account");
+      setError(FirebaseErrorHandler.auth(err, "register").message);
     } finally {
       setLoading(false);
     }
@@ -134,9 +94,7 @@ const Register = () => {
       await loginWithGoogle();
       navigate("/");
     } catch (err) {
-      const error =
-        err instanceof Error ? err.message : "Failed to register with Google";
-      setError(error);
+      setError(FirebaseErrorHandler.auth(err, "register").message);
     } finally {
       setLoading(false);
     }
@@ -150,29 +108,16 @@ const Register = () => {
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <div className="space-y-6 rounded-2xl bg-white/80 backdrop-blur-sm p-6 sm:p-8 shadow-xl shadow-indigo-200/20">
+        <div className="space-y-6 rounded-2xl backdrop-blur-sm p-6 sm:p-8">
           <div className="text-center space-y-2">
-            <div className="flex justify-center mb-6">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center"
-              >
-                <Layout className="h-8 w-8 text-indigo-600" />
-                <span className="ml-2 text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  ExpenseTracker
-                </span>
-              </motion.div>
-            </div>
-
             <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Create Account
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="flex justify-center text-sm text-gray-600">
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="inline-flex items-center font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                className="inline-flex items-center font-medium text-indigo-600 hover:text-indigo-500 transition-colors ml-1"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Sign in
@@ -206,7 +151,6 @@ const Register = () => {
                 placeholder="John"
                 value={formData.firstName}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<User className="h-5 w-5 text-gray-400" />}
               />
 
@@ -219,7 +163,6 @@ const Register = () => {
                 placeholder="Doe"
                 value={formData.lastName}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<User className="h-5 w-5 text-gray-400" />}
               />
             </div>
@@ -234,26 +177,25 @@ const Register = () => {
               placeholder="you@example.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
               icon={<Mail className="h-5 w-5 text-gray-400" />}
             />
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Preferred Currency
-              </label>
               <Select
                 value={formData.currency}
                 onValueChange={handleCurrencyChange}
               >
-                <SelectTrigger className="h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                <SelectTrigger
+                  label="Preferred Currency"
+                  className="h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                >
                   <div className="flex items-center">
                     <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
                     <SelectValue placeholder="Select your currency" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map(({ value, label }) => (
+                  {CURRENCY.map(({ value, label }) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
@@ -273,80 +215,13 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 onFocus={() => setPasswordFocus(true)}
-                onBlur={() => setPasswordFocus(false)}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
 
-              <AnimatePresence>
-                {passwordFocus && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-xl border border-gray-200 bg-gray-50/50 backdrop-blur-sm p-4"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-700">
-                      Password requirements:
-                    </p>
-                    <ul className="space-y-1">
-                      {passwordRequirements.map((req, index) => (
-                        <li key={index} className="flex items-center text-sm">
-                          <motion.div
-                            initial={false}
-                            animate={{
-                              scale: req.validator(formData.password)
-                                ? [1.2, 1]
-                                : 1,
-                            }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {req.validator(formData.password) ? (
-                              <svg
-                                className="mr-2 h-4 w-4 text-green-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="mr-2 h-4 w-4 text-gray-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            )}
-                          </motion.div>
-                          <span
-                            className={cn(
-                              "transition-colors duration-200",
-                              req.validator(formData.password)
-                                ? "text-green-700"
-                                : "text-gray-600",
-                            )}
-                          >
-                            {req.label}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <PasswordRequirements
+                password={formData.password}
+                isVisible={passwordFocus}
+              />
 
               <Input
                 label="Confirm Password"
@@ -357,7 +232,6 @@ const Register = () => {
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
-                className="pl-10 h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
             </div>
@@ -368,20 +242,20 @@ const Register = () => {
                 disabled={loading}
                 variant="primary"
                 size="lg"
-                className="w-full h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200"
+                fullWidth
+                isLoading={loading}
               >
-                <UserPlus className="mr-2 h-5 w-5" />
-                {loading ? "Creating Account..." : "Create Account"}
+                Create Account
               </Button>
             </motion.div>
           </form>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">
+              <span className="bg-white px-4 text-gray-500 rounded-xl">
                 Or continue with
               </span>
             </div>
@@ -393,7 +267,7 @@ const Register = () => {
               disabled={loading}
               variant="outline"
               size="lg"
-              className="w-full h-11 border-2 border-gray-200 hover:border-gray-300 rounded-xl shadow-lg shadow-gray-100 hover:shadow-gray-200 transition-all duration-200"
+              fullWidth
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path

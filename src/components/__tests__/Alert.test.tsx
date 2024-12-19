@@ -169,11 +169,8 @@ describe("Alert Component", () => {
         </Alert>,
       );
 
-      const link = screen.getByRole("link", { name: /learn more/i });
+      const link = screen.getByRole("button", { name: /learn more/i });
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "https://example.com");
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
     });
   });
 
@@ -340,7 +337,7 @@ describe("Alert Component", () => {
       await testAccessibility(container, ["tabindex"]);
 
       const interactiveElements = getAllByRole("button");
-      const link = container.querySelector("a");
+      const link = container.querySelector("button");
       expect(link).toBeInTheDocument();
 
       // Verify natural tab order

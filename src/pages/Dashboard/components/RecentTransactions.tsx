@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  ArrowUpRight, 
+import React, { useEffect, useState } from "react";
+import {
+  ArrowUpRight,
   ArrowDownRight,
   Calendar,
   Tag,
@@ -8,20 +8,19 @@ import {
   Clock,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-import { getRecentTransactions } from '@/services/TransactionService';
-import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
-import EmptyState from '@/components/EmptyState';
-import { getCategories } from '@/services/userService';
-import { Category, Transaction, TransactionType } from '@/types';
+  ChevronUp,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { getRecentTransactions } from "@/services/TransactionService";
+import { useAuth } from "@/contexts/AuthContext";
+import { cn, formatCurrency } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
+import { getCategories } from "@/services/userService";
+import { Category, Transaction, TransactionType } from "@/types";
 interface TransactionItemProps {
   transaction: Transaction;
   category?: Category;
   formatDate: (date: string) => string;
-  formatAmount: (amount: number, type: TransactionType) => string;
   isHovered: boolean;
   onHover: (id: string | null) => void;
 }
@@ -32,9 +31,9 @@ const TransactionTypeIcon: React.FC<{ type: TransactionType }> = ({ type }) => (
     animate={{ scale: 1 }}
     className={cn(
       "flex items-center justify-center w-10 h-10 rounded-xl",
-      type === "INCOME" 
-        ? "bg-emerald-50 text-emerald-600" 
-        : "bg-rose-50 text-rose-600"
+      type === "INCOME"
+        ? "bg-emerald-50 text-emerald-600"
+        : "bg-rose-50 text-rose-600",
     )}
   >
     {type === "INCOME" ? (
@@ -45,14 +44,14 @@ const TransactionTypeIcon: React.FC<{ type: TransactionType }> = ({ type }) => (
   </motion.div>
 );
 
-const TransactionItem: React.FC<TransactionItemProps> = ({ 
-  transaction, 
+const TransactionItem: React.FC<TransactionItemProps> = ({
+  transaction,
   category,
   formatDate,
-  formatAmount,
   isHovered,
-  onHover 
+  onHover,
 }) => {
+  const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return (
@@ -61,28 +60,28 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
       onHoverEnd={() => onHover(null)}
       className={cn(
         "transition-colors duration-150",
-        isHovered ? "bg-gray-50" : "hover:bg-gray-50"
+        isHovered ? "bg-gray-50" : "hover:bg-gray-50",
       )}
     >
       {/* Desktop view */}
       <div className="hidden md:flex items-center justify-between p-4">
         <div className="flex items-center space-x-4">
           <TransactionTypeIcon type={transaction.type} />
-          
+
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-gray-900">
                 {transaction.description}
               </span>
-              <span 
+              <span
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium",
                   "transition-opacity duration-150 shadow-sm",
-                  isHovered ? "opacity-100" : "opacity-90"
+                  isHovered ? "opacity-100" : "opacity-90",
                 )}
                 style={{
-                  backgroundColor: `${category?.color || '#6B7280'}15`,
-                  color: category?.color || '#6B7280'
+                  backgroundColor: `${category?.color || "#6B7280"}15`,
+                  color: category?.color || "#6B7280",
                 }}
               >
                 <Tag className="w-3 h-3" />
@@ -106,13 +105,16 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
         <span
           className={cn(
             "text-sm font-medium px-3 py-1 rounded-lg",
-            transaction.type === "INCOME" 
-              ? "text-emerald-700 bg-emerald-50" 
-              : "text-rose-700 bg-rose-50"
+            transaction.type === "INCOME"
+              ? "text-emerald-700 bg-emerald-50"
+              : "text-rose-700 bg-rose-50",
           )}
         >
           {transaction.type === "INCOME" ? "+" : "-"}
-          {formatAmount(transaction.amount, transaction.type)}
+          {formatCurrency(
+            transaction.amount,
+            user?.preferences.currency || "USD",
+          )}
         </span>
       </div>
 
@@ -131,13 +133,16 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
               <span
                 className={cn(
                   "text-sm font-medium ml-2",
-                  transaction.type === "INCOME" 
+                  transaction.type === "INCOME"
                     ? "text-emerald-700"
-                    : "text-rose-700"
+                    : "text-rose-700",
                 )}
               >
                 {transaction.type === "INCOME" ? "+" : "-"}
-                {formatAmount(transaction.amount, transaction.type)}
+                {formatCurrency(
+                  transaction.amount,
+                  user?.preferences.currency || "USD",
+                )}
               </span>
             </div>
           </div>
@@ -152,9 +157,9 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
           <div className="px-4 pb-4 space-y-3">
             <div className="flex items-center gap-2">
               <Tag className="w-4 h-4 text-gray-400" />
-              <span 
+              <span
                 className="text-sm"
-                style={{ color: category?.color || '#6B7280' }}
+                style={{ color: category?.color || "#6B7280" }}
               >
                 {transaction.categoryName}
               </span>
@@ -181,7 +186,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
 const RecentTransactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const { user } = useAuth();
   const [categories, setCategories] = useState<(Category | undefined)[]>([]);
@@ -194,28 +199,28 @@ const RecentTransactions: React.FC = () => {
         setLoading(true);
         const response = await getRecentTransactions(user.id, 5);
         if (response.status === 200 && response.data) {
-          const categoriesOfTransactions = response.data.map(t => ({
+          const categoriesOfTransactions = response.data.map((t) => ({
             categoryId: t.categoryId,
             category: t.categoryName,
           }));
-          
+
           const allCategories = await getCategories(user.id);
           if (allCategories.error || !allCategories.data) {
-            throw new Error('Failed to fetch categories');
+            throw new Error("Failed to fetch categories");
           }
-    
-          const categoriesForTransactions = categoriesOfTransactions.map(c => 
-            allCategories.data?.find(cat => cat.id === c.categoryId)
+
+          const categoriesForTransactions = categoriesOfTransactions.map((c) =>
+            allCategories.data?.find((cat) => cat.id === c.categoryId),
           );
-    
+
           setCategories(categoriesForTransactions);
           setTransactions(response.data);
         } else {
-          setError(response.error || 'Failed to load recent transactions');
+          setError(response.error || "Failed to load recent transactions");
         }
       } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('Failed to load recent transactions');
+        console.error("Error fetching transactions:", err);
+        setError("Failed to load recent transactions");
       } finally {
         setLoading(false);
       }
@@ -232,22 +237,17 @@ const RecentTransactions: React.FC = () => {
     });
   };
 
-  const formatAmount = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences?.currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(amount));
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-            <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Recent Transactions
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Your latest financial activity
+            </p>
           </div>
           <Clock className="w-5 h-5 text-gray-400" />
         </div>
@@ -274,8 +274,12 @@ const RecentTransactions: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-            <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Recent Transactions
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Your latest financial activity
+            </p>
           </div>
           <AlertTriangle className="w-5 h-5 text-red-500" />
         </div>
@@ -293,16 +297,22 @@ const RecentTransactions: React.FC = () => {
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-              <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Recent Transactions
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Your latest financial activity
+              </p>
             </div>
             <Clock className="w-5 h-5 text-gray-400" />
           </div>
         </div>
-        <EmptyState
-          heading="No Recent Transactions"
-          message="Start tracking your finances by adding your first transaction."
-        />
+        <div className="p-6">
+          <EmptyState
+            heading="No Recent Transactions"
+            message="Start tracking your finances by adding your first transaction."
+          />
+        </div>
       </div>
     );
   }
@@ -312,8 +322,12 @@ const RecentTransactions: React.FC = () => {
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-            <p className="text-sm text-gray-500 mt-1">Your latest financial activity</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Recent Transactions
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Your latest financial activity
+            </p>
           </div>
           <Clock className="w-5 h-5 text-gray-400" />
         </div>
@@ -326,7 +340,6 @@ const RecentTransactions: React.FC = () => {
             transaction={transaction}
             category={categories[index]}
             formatDate={formatDate}
-            formatAmount={formatAmount}
             isHovered={hoveredRow === transaction.id}
             onHover={setHoveredRow}
           />
