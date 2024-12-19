@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Tabs } from "./Tabs";
 import { CogIcon, HomeIcon, User2Icon } from "lucide-react";
