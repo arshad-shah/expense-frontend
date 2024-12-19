@@ -246,7 +246,7 @@ export const Dropdown = ({
                     {item.description && (
                       <span
                         className={cn(
-                          "text-xs transition-colors duration-150 pl-6",
+                          "text-xs transition-colors duration-150",
                           variant.description,
                         )}
                       >

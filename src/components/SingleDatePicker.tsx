@@ -1,55 +1,32 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import {
-  AlertCircleIcon,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Label } from "./Label";
 
-interface DateRange {
-  startDate: string;
-  endDate: string;
-}
-
-interface DateRangePickerProps {
+interface SingleDatePickerProps {
   label?: string;
-  dateRange: DateRange;
-  onChange: (updatedDateRange: DateRange) => void;
+  selectedDate: string;
+  onChange: (updatedDate: string) => void;
   error?: string;
   helperText?: string;
   disabled?: boolean;
 }
 
-export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+export const SingleDatePicker: React.FC<SingleDatePickerProps> = ({
   label = "",
-  dateRange,
+  selectedDate,
   onChange,
   error,
   helperText,
   disabled = false,
 }) => {
-  const [isStartOpen, setIsStartOpen] = useState(false);
-  const [isEndOpen, setIsEndOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleStartDateChange = (date: Date | null) => {
+  const handleDateChange = (date: Date | null) => {
     if (date) {
-      onChange({
-        ...dateRange,
-        startDate: date.toISOString(),
-      });
-    }
-  };
-
-  const handleEndDateChange = (date: Date | null) => {
-    if (date) {
-      onChange({
-        ...dateRange,
-        endDate: date.toISOString(),
-      });
+      onChange(date.toISOString());
     }
   };
 
@@ -60,7 +37,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     prevMonthButtonDisabled: boolean;
     nextMonthButtonDisabled: boolean;
   };
-  // Custom header component
+
   const CustomHeader = ({
     date,
     decreaseMonth,
@@ -134,85 +111,32 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Label */}
-      <AnimatePresence>
-        {label && (
-          <motion.label
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="block text-base font-semibold text-gray-900"
-          >
-            {label}
-          </motion.label>
-        )}
-      </AnimatePresence>
-
-      {/* Date Pickers Container */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Start Date</Label>
-          <DatePicker
-            selected={new Date(dateRange.startDate)}
-            onChange={handleStartDateChange}
-            customInput={<CustomInput />}
-            dateFormat="MMM dd, yyyy"
-            disabled={disabled}
-            wrapperClassName="w-full"
-            calendarClassName="shadow-2xl border-0 rounded-2xl overflow-hidden"
-            popperClassName="z-50"
-            renderCustomHeader={CustomHeader}
-            open={isStartOpen}
-            onCalendarOpen={() => {
-              setIsStartOpen(true);
-              setIsEndOpen(false);
-            }}
-            onCalendarClose={() => setIsStartOpen(false)}
-            dayClassName={(date) =>
-              `text-sm font-medium hover:bg-violet-50 rounded-lg transition-all mx-0.5 w-9 h-9 flex items-center justify-center
-              ${
-                date.toISOString().split("T")[0] ===
-                dateRange.startDate.split("T")[0]
-                  ? "bg-violet-100 text-violet-900"
-                  : "text-gray-900"
-              }`
-            }
-          ></DatePicker>
-        </div>
-
-        <div className="space-y-2">
-          <Label>End Date</Label>
-          <DatePicker
-            selected={new Date(dateRange.endDate)}
-            onChange={handleEndDateChange}
-            customInput={<CustomInput />}
-            dateFormat="MMM dd, yyyy"
-            disabled={disabled}
-            wrapperClassName="w-full"
-            calendarClassName="shadow-2xl border-0 rounded-2xl overflow-hidden"
-            popperClassName="z-50"
-            renderCustomHeader={CustomHeader}
-            open={isEndOpen}
-            onCalendarOpen={() => {
-              setIsEndOpen(true);
-              setIsStartOpen(false);
-            }}
-            onCalendarClose={() => setIsEndOpen(false)}
-            dayClassName={(date) =>
-              `text-sm font-medium hover:bg-violet-50 rounded-lg transition-all mx-0.5 w-9 h-9 flex items-center justify-center
-              ${
-                date.toISOString().split("T")[0] ===
-                dateRange.endDate.split("T")[0]
-                  ? "bg-violet-100 text-violet-900"
-                  : "text-gray-700"
-              }`
-            }
-            minDate={new Date(dateRange.startDate)}
-          ></DatePicker>
-        </div>
+      <div className="space-y-2">
+        {label && <Label>{label}</Label>}
+        <DatePicker
+          selected={new Date(selectedDate)}
+          onChange={handleDateChange}
+          customInput={<CustomInput />}
+          dateFormat="MMM dd, yyyy"
+          disabled={disabled}
+          wrapperClassName="w-full"
+          calendarClassName="shadow-2xl border-0 rounded-2xl overflow-hidden"
+          popperClassName="z-50"
+          renderCustomHeader={CustomHeader}
+          open={isOpen}
+          onCalendarOpen={() => setIsOpen(true)}
+          onCalendarClose={() => setIsOpen(false)}
+          dayClassName={(date) =>
+            `text-sm font-medium hover:bg-violet-50 rounded-lg transition-all mx-0.5 w-9 h-9 flex items-center justify-center
+            ${
+              date.toISOString().split("T")[0] === selectedDate.split("T")[0]
+                ? "bg-violet-100 text-violet-900"
+                : "text-gray-900"
+            }`
+          }
+        ></DatePicker>
       </div>
 
-      {/* Error or Helper Text */}
       <AnimatePresence mode="wait">
         {(error || helperText) && (
           <motion.div
@@ -228,8 +152,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 animate={{ opacity: 1 }}
                 className="text-sm text-red-600 flex items-center gap-1.5"
               >
-                <AlertCircleIcon size={16} />
-                <span className="font-medium">{error}</span>
+                <span>{error}</span>
               </motion.p>
             ) : (
               <motion.p

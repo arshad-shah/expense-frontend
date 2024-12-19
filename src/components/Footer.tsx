@@ -113,7 +113,7 @@ const Footer: React.FC = () => {
 
           {/* Tech Stack */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {["React", "Tailwind CSS", "Vite"].map((tech) => (
+            {["React", "Tailwind CSS", "Vite", "Firebase"].map((tech) => (
               <motion.span
                 key={tech}
                 className="rounded-full bg-gray-800 px-3 py-1 text-xs text-gray-400"

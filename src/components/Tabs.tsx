@@ -47,7 +47,6 @@ export const Tabs = ({
   });
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isInitialRender, setIsInitialRender] = useState(true);
 
   const colorClasses = {
     primary: {
@@ -103,34 +102,32 @@ export const Tabs = ({
       const containerRect = containerRef.current.getBoundingClientRect();
       const activeTabRect = activeTab.getBoundingClientRect();
 
+      // Adjust for potential misalignment
       const newStyle = {
         width: activeTabRect.width,
         height: activeTabRect.height,
-        left: activeTabRect.left - containerRect.left,
-        top: activeTabRect.top - containerRect.top,
+        left:
+          activeTabRect.left -
+          containerRect.left +
+          containerRef.current.scrollLeft -
+          5, // Fine-tune left offset
+        top:
+          activeTabRect.top -
+          containerRect.top +
+          containerRef.current.scrollTop -
+          5, // Fine-tune top offset
       };
 
-      console.log(newStyle);
-
-      setActiveIndicatorStyle(() => {
-        if (isInitialRender) {
-          setIsInitialRender(false);
-          return newStyle;
-        }
-        return {
-          ...newStyle,
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        };
-      });
+      setActiveIndicatorStyle(newStyle);
     };
 
     updateIndicator();
     window.addEventListener("resize", updateIndicator);
     return () => window.removeEventListener("resize", updateIndicator);
-  }, [value, items, isInitialRender]);
+  }, [value, items]);
 
   const containerClasses = cn(
-    "relative rounded-xl p-1.5",
+    "relative rounded-xl p-1.5 border border-black",
     vertical ? "flex-col" : "flex-row",
     colorClasses[color].container,
     fullWidth ? "w-full" : "w-fit",

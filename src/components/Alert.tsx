@@ -118,77 +118,84 @@ const Alert: React.FC<AlertProps> = ({
   return (
     <div
       className={cn(
-        "relative flex gap-3 p-4 rounded-lg border shadow-sm",
+        "flex gap-3 p-4 rounded-lg border shadow-sm",
         variantStyles.containerClass,
         className,
       )}
       role="alert"
     >
-      {/* Icon */}
-      <div className={cn("flex-shrink-0", variantStyles.iconClass)}>
-        {icon || variantStyles.icon}
-      </div>
+      <div className="flex gap-4 justify-between w-full">
+        {/* Icon */}
+        <div className={cn("flex-shrink-0", variantStyles.iconClass)}>
+          {icon || variantStyles.icon}
+        </div>
 
-      {/* Content */}
-      <div className="flex-1">
-        {title && (
-          <h3 className={cn("font-medium mb-1", variantStyles.titleClass)}>
-            {title}
-          </h3>
-        )}
-        <div className={cn("text-sm", variantStyles.textClass)}>{children}</div>
-
-        {/* Actions */}
-        {(actions.length > 0 || link) && (
-          <div className="flex gap-3 mt-3">
-            {actions.map((action, index) => (
-              <Button
-                key={index}
-                onClick={action.onClick}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                  action.variant === "secondary"
-                    ? variantStyles.buttonClass
-                    : "bg-white border shadow-sm hover:shadow-md",
-                )}
-              >
-                {action.label}
-              </Button>
-            ))}
-            {link && (
-              <Button
-                variant="warning"
-                size="sm"
-                onClick={link.onClick}
-                className={cn(
-                  "inline-flex items-center gap-1 text-sm",
-                  variantStyles.textClass,
-                  "hover:underline",
-                )}
-              >
-                {link.label}
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Dismiss button */}
-      {dismissible && (
-        <Button
-          onClick={onDismiss}
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "absolute top-4 right-4 p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
-            variantStyles.buttonClass,
+        {/* Content */}
+        <div className="flex-1">
+          {title && (
+            <h3 className={cn("font-medium mb-1", variantStyles.titleClass)}>
+              {title}
+            </h3>
           )}
-          aria-label="Dismiss alert"
-        >
-          <XIcon className="w-4 h-4" />
-        </Button>
-      )}
+
+          <div className={cn("text-sm", variantStyles.textClass)}>
+            {children}
+          </div>
+
+          {/* Actions */}
+          {(actions.length > 0 || link) && (
+            <div className="flex gap-3 mt-3">
+              {actions.map((action, index) => (
+                <Button
+                  key={index}
+                  onClick={action.onClick}
+                  size="sm"
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    action.variant === "secondary"
+                      ? variantStyles.buttonClass
+                      : "bg-white border shadow-sm hover:shadow-md",
+                  )}
+                >
+                  {action.label}
+                </Button>
+              ))}
+              {link && (
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={link.onClick}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-sm",
+                    variantStyles.textClass,
+                    "hover:underline",
+                  )}
+                >
+                  {link.label}
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
+        {/* Dismiss button */}
+        {dismissible && (
+          <Button
+            onClick={onDismiss}
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "p-1 rounded-full opacity-70 hover:opacity-100 transition-opacity",
+              variantStyles.buttonClass,
+            )}
+            aria-label="Dismiss alert"
+          >
+            <XIcon className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

@@ -19,7 +19,7 @@ import { getCategories } from "@/services/userService";
 import { formatCurrency } from "@/lib/utils";
 import { ProgressBar } from "@/components/Progressbar";
 import Alert from "@/components/Alert";
-import DateRangePicker from "@/components/DateRangePicker";
+import { DateRangePicker } from "@/components/DateRangePicker";
 
 interface AddBudgetModalProps {
   isOpen: boolean;

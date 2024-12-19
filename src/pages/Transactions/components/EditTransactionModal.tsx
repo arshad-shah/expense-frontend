@@ -13,6 +13,7 @@ import { Button } from "@/components/Button";
 import { updateTransaction } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Transaction, Account, Category, TransactionInput } from "@/types";
+import { SingleDatePicker } from "@/components/SingleDatePicker";
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -121,132 +122,103 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
         )}
 
         {/* Account Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Account
-          </label>
-          <Select
-            value={formData.accountId}
-            onValueChange={(value) =>
-              setFormData({ ...formData, accountId: value })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={formData.accountId}
+          onValueChange={(value) =>
+            setFormData({ ...formData, accountId: value })
+          }
+        >
+          <SelectTrigger label="Account" className="w-full">
+            <SelectValue placeholder="Select account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Category
-          </label>
-          <Select
-            value={formData.categoryId}
-            onValueChange={(value) =>
-              setFormData({ ...formData, categoryId: value })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {categories
-                  .filter((category) => category.type === formData.type)
-                  .map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={formData.categoryId}
+          onValueChange={(value) =>
+            setFormData({ ...formData, categoryId: value })
+          }
+        >
+          <SelectTrigger label="Category" className="w-full">
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {categories
+                .filter((category) => category.type === formData.type)
+                .map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Transaction Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Type
-          </label>
-          <Select
-            value={formData.type}
-            onValueChange={(value) =>
-              setFormData({
-                ...formData,
-                type: value as "INCOME" | "EXPENSE",
-                // Reset category when type changes as they're filtered by type
-                categoryId: undefined,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="INCOME">Income</SelectItem>
-                <SelectItem value="EXPENSE">Expense</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={formData.type}
+          onValueChange={(value) =>
+            setFormData({
+              ...formData,
+              type: value as "INCOME" | "EXPENSE",
+              // Reset category when type changes as they're filtered by type
+              categoryId: undefined,
+            })
+          }
+        >
+          <SelectTrigger label="Type" className="w-full">
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="INCOME">Income</SelectItem>
+              <SelectItem value="EXPENSE">Expense</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Amount Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Amount
-          </label>
-          <Input
-            type="number"
-            step="0.01"
-            value={formData.amount}
-            onChange={(e) =>
-              setFormData({ ...formData, amount: parseFloat(e.target.value) })
-            }
-            required
-          />
-        </div>
+        <Input
+          type="number"
+          label="Amount"
+          step="0.01"
+          value={formData.amount}
+          onChange={(e) =>
+            setFormData({ ...formData, amount: parseFloat(e.target.value) })
+          }
+          required
+        />
 
         {/* Description Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <Input
-            type="text"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            required
-          />
-        </div>
+        <Input
+          type="text"
+          label="Description"
+          value={formData.description}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
+          required
+        />
 
         {/* Transaction Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Date
-          </label>
-          <Input
-            type="date"
-            value={formData.transactionDate}
-            onChange={(e) =>
-              setFormData({ ...formData, transactionDate: e.target.value })
-            }
-            required
-          />
-        </div>
+        <SingleDatePicker
+          label="Transaction Date"
+          selectedDate={formData.transactionDate || ""}
+          onChange={(date) =>
+            setFormData({ ...formData, transactionDate: date })
+          }
+        />
 
         {/* Actions */}
         <div className="flex justify-end space-x-3">

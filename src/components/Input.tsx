@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Label } from "./Label";
 
 interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
@@ -29,8 +30,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       inputSize = "md",
       className,
       required,
-      showRequired,
-      requiredStyle = "subtle",
       disabled,
       ...props
     },
@@ -53,28 +52,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         "border-b-2 border-gray-200 focus:border-blue-500 rounded-none bg-transparent px-0",
     };
 
-    const requiredClasses = {
-      subtle: "after:content-['*'] after:ml-1 after:text-red-500",
-      prominent:
-        "after:content-['(Required)'] after:ml-2 after:text-sm after:text-red-500",
-      animated:
-        "after:content-['*'] after:ml-1 after:text-red-500 after:animate-pulse",
-    };
-
     return (
       <div
         className={cn("relative space-y-1", fullWidth && "w-full", className)}
       >
         {label && (
-          <label
-            className={cn(
-              "block text-sm font-medium text-gray-700",
-              disabled && "opacity-50",
-              required && showRequired && requiredClasses[requiredStyle],
-            )}
-          >
+          <Label className="block text-sm font-medium text-gray-700">
             {label}
-          </label>
+          </Label>
         )}
 
         <div className="relative">

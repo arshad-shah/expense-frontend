@@ -16,6 +16,7 @@ import { updateAccount } from "@/services/AccountService";
 import type { Account, Category, TransactionType } from "@/types";
 import { getCategories } from "@/services/userService";
 import Alert from "@/components/Alert";
+import { SingleDatePicker } from "@/components/SingleDatePicker";
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, initialAccounts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,16 +261,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         />
 
         {/* Date Input */}
-        <Input
-          type="date"
+        <SingleDatePicker
           label="Transaction Date"
-          value={formData.transactionDate}
-          onChange={(e) =>
-            setFormData({ ...formData, transactionDate: e.target.value })
+          selectedDate={formData.transactionDate || ""}
+          onChange={(date) =>
+            setFormData({ ...formData, transactionDate: date })
           }
-          required
         />
-
         {/* Actions */}
         <div className="flex justify-end space-x-2">
           <Button

@@ -28,7 +28,7 @@ const DEFAULT_FORM_STATE: Omit<AccountInput, "userId"> = {
   bankName: "",
   balance: 0,
   currency: "USD",
-  metadata: {}
+  metadata: {},
 };
 
 const AddAccountModal: React.FC<AddAccountModalProps> = ({
@@ -37,7 +37,8 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
   onAccountAdded,
 }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<Omit<AccountInput, "userId">>(DEFAULT_FORM_STATE);
+  const [formData, setFormData] =
+    useState<Omit<AccountInput, "userId">>(DEFAULT_FORM_STATE);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,7 +56,7 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
       // Call the AccountService createAccount method
       const response = await createAccount(user.id, {
         ...formData,
-        userId: user.id
+        userId: user.id,
       });
 
       if (response.status === 201 && response.data) {
@@ -75,18 +76,18 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
   };
 
   const handleAccountTypeChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       accountType: value as AccountType,
       // Reset balance for credit cards
-      balance: value === "CREDIT_CARD" ? 0 : prev.balance
+      balance: value === "CREDIT_CARD" ? 0 : prev.balance,
     }));
   };
 
   const handleCurrencyChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      currency: value as Currency
+      currency: value as Currency,
     }));
   };
 
@@ -95,118 +96,99 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Error Message */}
         {error && (
-          <Alert 
-            variant="error" 
-            title="Error" 
-            onDismiss={() => setError("")}
-          >
+          <Alert variant="error" title="Error" onDismiss={() => setError("")}>
             {error}
           </Alert>
         )}
 
         {/* Account Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Account Name
-          </label>
-          <Input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            required
-            placeholder="Enter account name"
-            disabled={isSubmitting}
-          />
-        </div>
+        <Input
+          type="text"
+          label="Account Name"
+          value={formData.name}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, name: e.target.value }))
+          }
+          required
+          placeholder="Enter account name"
+          disabled={isSubmitting}
+        />
 
         {/* Account Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Account Type
-          </label>
-          <Select
-            value={formData.accountType}
-            onValueChange={handleAccountTypeChange}
-            disabled={isSubmitting}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select account type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="CHECKING">Checking</SelectItem>
-                <SelectItem value="SAVINGS">Savings</SelectItem>
-                <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
-                <SelectItem value="CASH">Cash</SelectItem>
-                <SelectItem value="INVESTMENT">Investment</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={formData.accountType}
+          onValueChange={handleAccountTypeChange}
+          disabled={isSubmitting}
+        >
+          <SelectTrigger label="Account Type" className="w-full">
+            <SelectValue placeholder="Select account type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="CHECKING">Checking</SelectItem>
+              <SelectItem value="SAVINGS">Savings</SelectItem>
+              <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+              <SelectItem value="CASH">Cash</SelectItem>
+              <SelectItem value="INVESTMENT">Investment</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Bank Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Bank Name
-          </label>
-          <Input
-            type="text"
-            value={formData.bankName}
-            onChange={(e) => setFormData(prev => ({ ...prev, bankName: e.target.value }))}
-            required
-            placeholder="Enter bank name"
-            disabled={isSubmitting}
-          />
-        </div>
+        <Input
+          type="text"
+          label="Bank Name"
+          value={formData.bankName}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, bankName: e.target.value }))
+          }
+          required
+          placeholder="Enter bank name"
+          disabled={isSubmitting}
+        />
 
         {/* Initial Balance */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Initial Balance
-          </label>
-          <Input
-            type="number"
-            value={formData.balance}
-            onChange={(e) => setFormData(prev => ({
+        <Input
+          type="number"
+          label="Initial Balance"
+          value={formData.balance}
+          onChange={(e) =>
+            setFormData((prev) => ({
               ...prev,
-              balance: parseFloat(e.target.value) || 0
-            }))}
-            required
-            placeholder="Enter initial balance"
-            step="0.01"
-            disabled={isSubmitting || formData.accountType === "CREDIT_CARD"}
-          />
-          {formData.accountType === "CREDIT_CARD" && (
-            <p className="mt-1 text-sm text-gray-500">
-              Credit card accounts start with a zero balance
-            </p>
-          )}
-        </div>
+              balance: parseFloat(e.target.value) || 0,
+            }))
+          }
+          required
+          placeholder="Enter initial balance"
+          step="0.01"
+          disabled={isSubmitting || formData.accountType === "CREDIT_CARD"}
+        />
+        {formData.accountType === "CREDIT_CARD" && (
+          <p className="mt-1 text-sm text-gray-500">
+            Credit card accounts start with a zero balance
+          </p>
+        )}
 
         {/* Currency */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Currency
-          </label>
-          <Select
-            value={formData.currency}
-            onValueChange={handleCurrencyChange}
-            disabled={isSubmitting}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select currency" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {CURRENCY.map((currency) => (
-                  <SelectItem key={currency.label} value={currency.value}>
-                    {currency.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+
+        <Select
+          value={formData.currency}
+          onValueChange={handleCurrencyChange}
+          disabled={isSubmitting}
+        >
+          <SelectTrigger label="Currency" className="w-full">
+            <SelectValue placeholder="Select currency" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {CURRENCY.map((currency) => (
+                <SelectItem key={currency.label} value={currency.value}>
+                  {currency.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
         {/* Actions */}
         <div className="flex justify-end space-x-3 mt-6">
@@ -219,11 +201,7 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            className="px-4"
-            disabled={isSubmitting}
-          >
+          <Button type="submit" className="px-4" disabled={isSubmitting}>
             {isSubmitting ? "Adding Account..." : "Add Account"}
           </Button>
         </div>

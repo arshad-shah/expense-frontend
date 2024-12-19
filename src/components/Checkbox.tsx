@@ -1,9 +1,11 @@
 import React from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import { Label } from "./Label";
 
-interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
+export interface CheckboxProps
+  extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
   id?: string;
-  checked?: boolean;
+  checked?: boolean | "indeterminate";
   onCheckedChange?: (checked: boolean | "indeterminate") => void;
   disabled?: boolean;
   className?: string;
@@ -32,9 +34,7 @@ export const Checkbox = React.forwardRef<
       `}
       {...props}
     >
-      <CheckboxPrimitive.Indicator
-        className="flex items-center justify-center text-current"
-      >
+      <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -49,11 +49,7 @@ export const Checkbox = React.forwardRef<
         </svg>
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
-    {label && (
-      <label className="text-sm text-gray-700 select-none cursor-pointer">
-        {label}
-      </label>
-    )}
+    {label && <Label>{label}</Label>}
   </div>
 ));
 

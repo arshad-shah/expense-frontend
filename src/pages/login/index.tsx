@@ -114,15 +114,13 @@ const Login = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="remember-me"
+                  label="Remember me"
                   checked={rememberMe}
                   onCheckedChange={(checked) =>
                     setRememberMe(checked as boolean)
                   }
                   className="text-indigo-600 border-gray-300 rounded-md focus:ring-indigo-500"
                 />
-                <label htmlFor="remember-me" className="text-sm text-gray-600">
-                  Remember me
-                </label>
               </div>
 
               <Link
@@ -199,6 +197,22 @@ const Login = () => {
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </div>
+          <p className="text-center text-xs text-gray-600">
+            By creating an account, you agree to our{" "}
+            <Link
+              to="/terms"
+              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="/privacy"
+              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              Privacy Policy
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

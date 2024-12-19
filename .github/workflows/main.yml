@@ -34,7 +34,13 @@ jobs:
 
     - name: Test
       run: CI=true pnpm test
-
+    
+    - name: Run Chromatic
+      uses: chromaui/action@latest
+      with:
+        projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        onlyChanged: true
+        exitZeroOnChanges: false
     - name: Build
       env:
         CI: true

@@ -20,9 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select";
-import { cn } from "@/lib/utils";
-import { CURRENCY, PASSWORD_REQUIREMENTS, VALIDATION_RULES } from "@/constants";
+import { CURRENCY, VALIDATION_RULES } from "@/constants";
 import { FirebaseErrorHandler } from "@/lib/firebase-error-handler";
+import PasswordRequirements from "@/components/PasswordRequirements";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -181,14 +181,14 @@ const Register = () => {
             />
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Preferred Currency
-              </label>
               <Select
                 value={formData.currency}
                 onValueChange={handleCurrencyChange}
               >
-                <SelectTrigger className="h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+                <SelectTrigger
+                  label="Preferred Currency"
+                  className="h-11 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                >
                   <div className="flex items-center">
                     <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
                     <SelectValue placeholder="Select your currency" />
@@ -215,79 +215,13 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 onFocus={() => setPasswordFocus(true)}
-                onBlur={() => setPasswordFocus(false)}
                 icon={<Lock className="h-5 w-5 text-gray-400" />}
               />
 
-              <AnimatePresence>
-                {passwordFocus && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-xl border border-gray-200 bg-gray-50/50 backdrop-blur-sm p-4"
-                  >
-                    <p className="mb-2 text-sm font-medium text-gray-700">
-                      Password requirements:
-                    </p>
-                    <ul className="space-y-1">
-                      {PASSWORD_REQUIREMENTS.map((req, index) => (
-                        <li key={index} className="flex items-center text-sm">
-                          <motion.div
-                            initial={false}
-                            animate={{
-                              scale: req.validator(formData.password)
-                                ? [1.2, 1]
-                                : 1,
-                            }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {req.validator(formData.password) ? (
-                              <svg
-                                className="mr-2 h-4 w-4 text-green-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="mr-2 h-4 w-4 text-gray-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            )}
-                          </motion.div>
-                          <span
-                            className={cn(
-                              "transition-colors duration-200",
-                              req.validator(formData.password)
-                                ? "text-green-700"
-                                : "text-gray-600",
-                            )}
-                          >
-                            {req.label}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <PasswordRequirements
+                password={formData.password}
+                isVisible={passwordFocus}
+              />
 
               <Input
                 label="Confirm Password"

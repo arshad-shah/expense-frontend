@@ -18,6 +18,7 @@ import Transactions from "@/pages/Transactions";
 import { createBrowserRouter, Outlet } from "react-router-dom";
 import ErrorBoundary from "./ErrorFallback";
 import NotFound from "./404";
+import VerifyEmail from "../Profile/VerifyEmail";
 
 export const router = createBrowserRouter([
   // Protected Routes (with Navigation)
@@ -93,7 +94,11 @@ export const router = createBrowserRouter([
         path: "/privacy",
         element: <PrivacyPolicy />,
       },
-      { path: "/auth-verification", element: <AuthVerificationHandler /> },
+      { path: "/auth-verfication", element: <AuthVerificationHandler /> },
+      {
+        path: "/verify-email",
+        element: <VerifyEmail />,
+      },
     ],
   },
 ]);

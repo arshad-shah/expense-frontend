@@ -218,16 +218,16 @@ const EditBudgetModal: React.FC<EditBudgetModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Period
-              </label>
               <Select
                 value={formData.period}
                 onValueChange={(value) =>
                   setFormData({ ...formData, period: value })
                 }
               >
-                <SelectTrigger className="w-full border-indigo-200">
+                <SelectTrigger
+                  label="Period"
+                  className="w-full border-indigo-200"
+                >
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent>

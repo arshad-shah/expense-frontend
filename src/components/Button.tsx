@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | "primary"
     | "secondary"
@@ -17,23 +17,26 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ 
-    className = "", 
-    variant = "primary", 
-    size = "md", 
-    isLoading = false,
-    fullWidth = false,
-    children, 
-    disabled,
-    ...props 
-  }, ref) => {
+  (
+    {
+      className = "",
+      variant = "primary",
+      size = "md",
+      isLoading = false,
+      fullWidth = false,
+      children,
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
     const baseStyles = [
       "inline-flex items-center justify-center rounded-lg font-medium",
       "transition-all duration-200 ease-in-out",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
       "relative overflow-hidden",
-      "active:scale-95 transform"
+      "active:scale-95 transform",
     ].join(" ");
 
     const variants = {
@@ -43,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-indigo-800 active:to-indigo-900",
         "focus-visible:ring-indigo-500",
         "shadow-md hover:shadow-lg",
-        "disabled:from-indigo-400 disabled:to-indigo-500"
+        "disabled:from-indigo-400 disabled:to-indigo-500",
       ].join(" "),
       secondary: [
         "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900",
@@ -51,13 +54,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-gray-300 active:to-gray-400",
         "focus-visible:ring-gray-400",
         "shadow-sm hover:shadow",
-        "border border-gray-200"
+        "border border-gray-200",
       ].join(" "),
       outline: [
         "border-2 border-indigo-600 text-indigo-600",
         "hover:bg-indigo-50 hover:border-indigo-700 hover:text-indigo-700",
         "active:bg-indigo-100 active:border-indigo-800 active:text-indigo-800",
-        "focus-visible:ring-indigo-500"
+        "focus-visible:ring-indigo-500",
       ].join(" "),
       danger: [
         "bg-gradient-to-r from-red-600 to-red-700 text-white",
@@ -65,7 +68,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-red-800 active:to-red-900",
         "focus-visible:ring-red-500",
         "shadow-md hover:shadow-lg",
-        "disabled:from-red-400 disabled:to-red-500"
+        "disabled:from-red-400 disabled:to-red-500",
       ].join(" "),
       success: [
         "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white",
@@ -73,7 +76,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-emerald-800 active:to-emerald-900",
         "focus-visible:ring-emerald-500",
         "shadow-md hover:shadow-lg",
-        "disabled:from-emerald-400 disabled:to-emerald-500"
+        "disabled:from-emerald-400 disabled:to-emerald-500",
       ].join(" "),
       warning: [
         "bg-gradient-to-r from-amber-500 to-amber-600 text-white",
@@ -81,7 +84,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-amber-700 active:to-amber-800",
         "focus-visible:ring-amber-400",
         "shadow-md hover:shadow-lg",
-        "disabled:from-amber-300 disabled:to-amber-400"
+        "disabled:from-amber-300 disabled:to-amber-400",
       ].join(" "),
       info: [
         "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white",
@@ -89,20 +92,20 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "active:from-cyan-700 active:to-cyan-800",
         "focus-visible:ring-cyan-400",
         "shadow-md hover:shadow-lg",
-        "disabled:from-cyan-300 disabled:to-cyan-400"
+        "disabled:from-cyan-300 disabled:to-cyan-400",
       ].join(" "),
       link: [
         "text-indigo-600 hover:text-indigo-700 hover:underline",
         "active:text-indigo-800",
         "focus-visible:ring-indigo-500",
-        "disabled:text-indigo-400"
+        "disabled:text-indigo-400",
       ].join(" "),
       ghost: [
         "text-gray-700 bg-transparent hover:bg-gray-100 hover:text-gray-900",
         "active:bg-gray-200",
         "focus-visible:ring-gray-400",
         "disabled:text-gray-400",
-        "hover:shadow-sm"
+        "hover:shadow-sm",
       ].join(" "),
     };
 
@@ -140,21 +143,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     // Ripple effect styles
-    const rippleStyles = !isLoading && variant !== 'link' ? [
-      "after:content-['']",
-      "after:absolute after:inset-0",
-      "after:rounded-lg",
-      "after:transition-[transform,opacity]",
-      "after:duration-500",
-      "after:bg-white/20",
-      "after:opacity-0",
-      "after:scale-x-75",
-      "hover:after:opacity-100",
-      "hover:after:scale-x-100",
-      "active:after:opacity-0",
-      "active:after:scale-x-95",
-      "after:origin-center"
-    ].join(" ") : "";
+    const rippleStyles =
+      !isLoading && variant !== "link"
+        ? [
+            "after:content-['']",
+            "after:absolute after:inset-0",
+            "after:rounded-lg",
+            "after:transition-[transform,opacity]",
+            "after:duration-500",
+            "after:bg-white/20",
+            "after:opacity-0",
+            "after:scale-x-75",
+            "hover:after:opacity-100",
+            "hover:after:scale-x-100",
+            "active:after:opacity-0",
+            "active:after:scale-x-95",
+            "after:origin-center",
+          ].join(" ")
+        : "";
 
     return (
       <button
@@ -171,13 +177,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         {...props}
       >
-        <span className={`flex items-center justify-center gap-2 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+        <span
+          className={`flex items-center justify-center gap-2 ${isLoading ? "opacity-0" : "opacity-100"}`}
+        >
           {children}
         </span>
         {isLoading && <LoadingSpinner />}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";
