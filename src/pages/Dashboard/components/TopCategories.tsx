@@ -9,7 +9,7 @@ import {
   PieChart as PieChartIcon,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 
 interface CategorySpending {
@@ -147,15 +147,6 @@ const TopCategories = () => {
     fetchCategoryData();
   }, [fetchCategoryData]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: user?.preferences.currency || "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (!active || !payload?.length) return null;
 
@@ -171,7 +162,7 @@ const TopCategories = () => {
         </div>
         <div className="text-sm space-y-1">
           <p className="font-medium text-gray-900">
-            {formatCurrency(data.value)}
+            {formatCurrency(data.value, user?.preferences?.currency || "USD")}
           </p>
           <p className="text-gray-500">
             {data.percentage.toFixed(1)}% of total
@@ -260,7 +251,8 @@ const TopCategories = () => {
             Top Categories
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Total spent: {formatCurrency(totalSpent)}
+            Total spent:{" "}
+            {formatCurrency(totalSpent, user?.preferences?.currency || "USD")}
           </p>
         </div>
         <PieChartIcon className="w-5 h-5 text-gray-400" />
@@ -330,7 +322,10 @@ const TopCategories = () => {
                     activeIndex === index ? "text-gray-900" : "text-gray-600",
                   )}
                 >
-                  {formatCurrency(category.value)}
+                  {formatCurrency(
+                    category.value,
+                    user?.preferences?.currency || "USD",
+                  )}
                 </span>
                 <div className="text-xs text-gray-500">
                   {category.transactionCount} transactions

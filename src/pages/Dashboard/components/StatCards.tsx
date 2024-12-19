@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, CreditCard, Wallet, PiggyBank, AlertTriangle } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getAccounts } from '@/services/AccountService';
-import { getTransactions } from '@/services/TransactionService';
-import type { Transaction } from '@/types';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  CreditCard,
+  Wallet,
+  PiggyBank,
+  AlertTriangle,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAccounts } from "@/services/AccountService";
+import { getTransactions } from "@/services/TransactionService";
+import type { Transaction } from "@/types";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface StatData {
   totalBalance: number;
@@ -18,7 +25,7 @@ interface StatData {
 const StatCards = () => {
   const [stats, setStats] = useState<StatData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -27,78 +34,114 @@ const StatCards = () => {
 
       try {
         setLoading(true);
-        
+
         // Get all accounts
         const accountsResponse = await getAccounts(user.id);
         if (accountsResponse.status !== 200 || !accountsResponse.data) {
-          throw new Error(accountsResponse.error || 'Failed to fetch accounts');
+          throw new Error(accountsResponse.error || "Failed to fetch accounts");
         }
-        
+
         const totalBalance = accountsResponse.data.items.reduce(
-          (sum, account) => sum + account.balance, 
-          0
+          (sum, account) => sum + account.balance,
+          0,
         );
 
         // Calculate dates for filtering
         const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const currentMonthStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1,
+        );
+        const currentMonthEnd = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+        );
+        const previousMonthStart = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+        );
         const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
         // Get transactions for both months
-        const [currentMonthResponse, previousMonthResponse] = await Promise.all([
-          getTransactions(user.id, {
-            dateRange: {
-              startDate: currentMonthStart.toISOString(),
-              endDate: currentMonthEnd.toISOString()
-            }
-          }, 1, 1000),
-          getTransactions(user.id, {
-            dateRange: {
-              startDate: previousMonthStart.toISOString(),
-              endDate: previousMonthEnd.toISOString()
-            }
-          }, 1, 1000)
-        ]);
+        const [currentMonthResponse, previousMonthResponse] = await Promise.all(
+          [
+            getTransactions(
+              user.id,
+              {
+                dateRange: {
+                  startDate: currentMonthStart.toISOString(),
+                  endDate: currentMonthEnd.toISOString(),
+                },
+              },
+              1,
+              1000,
+            ),
+            getTransactions(
+              user.id,
+              {
+                dateRange: {
+                  startDate: previousMonthStart.toISOString(),
+                  endDate: previousMonthEnd.toISOString(),
+                },
+              },
+              1,
+              1000,
+            ),
+          ],
+        );
 
         if (!currentMonthResponse.data || !previousMonthResponse.data) {
-          throw new Error('Failed to fetch transactions');
+          throw new Error("Failed to fetch transactions");
         }
 
         // Calculate monthly spending and savings
-        const currentMonthData = calculateMonthlyData(currentMonthResponse.data.items);
-        const previousMonthData = calculateMonthlyData(previousMonthResponse.data.items);
+        const currentMonthData = calculateMonthlyData(
+          currentMonthResponse.data.items,
+        );
+        const previousMonthData = calculateMonthlyData(
+          previousMonthResponse.data.items,
+        );
 
         // Calculate month-over-month changes
         const spendingChange = calculatePercentageChange(
           previousMonthData.spending,
-          currentMonthData.spending
+          currentMonthData.spending,
         );
 
         const savingsChange = calculatePercentageChange(
           previousMonthData.income - previousMonthData.spending,
-          currentMonthData.income - currentMonthData.spending
+          currentMonthData.income - currentMonthData.spending,
         );
 
         // Calculate balance change based on net flow
-        const currentNetFlow = currentMonthData.income - currentMonthData.spending;
-        const previousNetFlow = previousMonthData.income - previousMonthData.spending;
-        const balanceChange = calculatePercentageChange(previousNetFlow, currentNetFlow);
+        const currentNetFlow =
+          currentMonthData.income - currentMonthData.spending;
+        const previousNetFlow =
+          previousMonthData.income - previousMonthData.spending;
+        const balanceChange = calculatePercentageChange(
+          previousNetFlow,
+          currentNetFlow,
+        );
 
-        const monthlySavings = currentMonthData.income - currentMonthData.spending;
+        const monthlySavings =
+          currentMonthData.income - currentMonthData.spending;
 
         setStats({
           totalBalance,
           monthlySpending: currentMonthData.spending,
-          monthlySavings:monthlySavings > 0 ? monthlySavings : 0,
+          monthlySavings: monthlySavings > 0 ? monthlySavings : 0,
           balanceChange,
           spendingChange,
-          savingsChange
+          savingsChange,
         });
       } catch (err) {
-        console.error('Error fetching stats:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load statistics');
+        console.error("Error fetching stats:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load statistics",
+        );
       } finally {
         setLoading(false);
       }
@@ -110,14 +153,14 @@ const StatCards = () => {
   const calculateMonthlyData = (transactions: Transaction[]) => {
     return transactions.reduce(
       (acc, transaction) => {
-        if (transaction.type === 'EXPENSE') {
+        if (transaction.type === "EXPENSE") {
           acc.spending += transaction.amount;
-        } else if (transaction.type === 'INCOME') {
+        } else if (transaction.type === "INCOME") {
           acc.income += transaction.amount;
         }
         return acc;
       },
-      { spending: 0, income: 0 }
+      { spending: 0, income: 0 },
     );
   };
 
@@ -129,21 +172,12 @@ const StatCards = () => {
     return ((current - previous) / Math.abs(previous)) * 100;
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: user?.preferences.currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[1, 2, 3].map((i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
           >
             <div className="animate-pulse space-y-4">
@@ -176,60 +210,60 @@ const StatCards = () => {
   const getChangeStyle = (change: number, inverse: boolean = false) => {
     const isPositive = inverse ? change <= 0 : change >= 0;
     return {
-      colors: isPositive 
-        ? 'text-emerald-600 bg-emerald-50'
-        : 'text-indigo-600 bg-indigo-50',
-      icon: isPositive ? TrendingUp : TrendingDown
+      colors: isPositive
+        ? "text-emerald-600 bg-emerald-50"
+        : "text-indigo-600 bg-indigo-50",
+      icon: isPositive ? TrendingUp : TrendingDown,
     };
   };
 
   const getCardStyle = (index: number) => {
     const styles = [
       {
-        gradient: 'from-blue-50 to-indigo-50/50',
-        iconBg: 'bg-blue-50',
-        iconColor: 'text-blue-600',
-        border: 'border-blue-100',
+        gradient: "from-blue-50 to-indigo-50/50",
+        iconBg: "bg-blue-50",
+        iconColor: "text-blue-600",
+        border: "border-blue-100",
       },
       {
-        gradient: 'from-emerald-50 to-teal-50/50',
-        iconBg: 'bg-emerald-50',
-        iconColor: 'text-emerald-600',
-        border: 'border-emerald-100',
+        gradient: "from-emerald-50 to-teal-50/50",
+        iconBg: "bg-emerald-50",
+        iconColor: "text-emerald-600",
+        border: "border-emerald-100",
       },
       {
-        gradient: 'from-violet-50 to-purple-50/50',
-        iconBg: 'bg-violet-50',
-        iconColor: 'text-violet-600',
-        border: 'border-violet-100',
-      }
+        gradient: "from-violet-50 to-purple-50/50",
+        iconBg: "bg-violet-50",
+        iconColor: "text-violet-600",
+        border: "border-violet-100",
+      },
     ];
     return styles[index];
   };
 
   const statCards = [
     {
-      title: 'Total Balance',
+      title: "Total Balance",
       amount: stats.totalBalance,
       change: stats.balanceChange,
       icon: Wallet,
-      description: 'Net worth across all accounts'
+      description: "Net worth across all accounts",
     },
     {
-      title: 'Monthly Spending',
+      title: "Monthly Spending",
       amount: stats.monthlySpending,
       change: stats.spendingChange,
       icon: CreditCard,
       inverse: true,
-      description: 'Total expenses this month'
+      description: "Total expenses this month",
     },
     {
-      title: 'Monthly Savings',
+      title: "Monthly Savings",
       amount: stats.monthlySavings,
       change: stats.savingsChange,
       icon: PiggyBank,
-      description: 'Net savings this month'
-    }
+      description: "Net savings this month",
+    },
   ];
 
   return (
@@ -247,24 +281,20 @@ const StatCards = () => {
               "transition-all duration-200",
               "hover:shadow-md hover:border-opacity-75",
               style.gradient,
-              style.border
+              style.border,
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={cn(
-                "p-2.5 rounded-xl",
-                style.iconBg
-              )}>
-                <stat.icon className={cn(
-                  "h-6 w-6",
-                  style.iconColor
-                )} />
+              <div className={cn("p-2.5 rounded-xl", style.iconBg)}>
+                <stat.icon className={cn("h-6 w-6", style.iconColor)} />
               </div>
 
-              <div className={cn(
-                "flex items-center px-2.5 py-1.5 rounded-full text-sm font-medium",
-                changeStyle.colors
-              )}>
+              <div
+                className={cn(
+                  "flex items-center px-2.5 py-1.5 rounded-full text-sm font-medium",
+                  changeStyle.colors,
+                )}
+              >
                 <ChangeIcon className="h-4 w-4 mr-1" />
                 {Math.abs(stat.change).toFixed(1)}%
               </div>
@@ -275,11 +305,12 @@ const StatCards = () => {
                 {stat.title}
               </h3>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(stat.amount)}
+                {formatCurrency(
+                  stat.amount,
+                  user?.preferences?.currency || "USD",
+                )}
               </p>
-              <p className="text-xs text-gray-500">
-                {stat.description}
-              </p>
+              <p className="text-xs text-gray-500">{stat.description}</p>
             </div>
 
             {/* Decorative Elements */}

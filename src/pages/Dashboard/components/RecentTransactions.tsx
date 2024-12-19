@@ -13,7 +13,7 @@ import {
 import { motion } from "framer-motion";
 import { getRecentTransactions } from "@/services/TransactionService";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import { getCategories } from "@/services/userService";
 import { Category, Transaction, TransactionType } from "@/types";
@@ -21,7 +21,6 @@ interface TransactionItemProps {
   transaction: Transaction;
   category?: Category;
   formatDate: (date: string) => string;
-  formatAmount: (amount: number, type: TransactionType) => string;
   isHovered: boolean;
   onHover: (id: string | null) => void;
 }
@@ -49,10 +48,10 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
   transaction,
   category,
   formatDate,
-  formatAmount,
   isHovered,
   onHover,
 }) => {
+  const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return (
@@ -112,7 +111,10 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
           )}
         >
           {transaction.type === "INCOME" ? "+" : "-"}
-          {formatAmount(transaction.amount, transaction.type)}
+          {formatCurrency(
+            transaction.amount,
+            user?.preferences.currency || "USD",
+          )}
         </span>
       </div>
 
@@ -137,7 +139,10 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
                 )}
               >
                 {transaction.type === "INCOME" ? "+" : "-"}
-                {formatAmount(transaction.amount, transaction.type)}
+                {formatCurrency(
+                  transaction.amount,
+                  user?.preferences.currency || "USD",
+                )}
               </span>
             </div>
           </div>
@@ -230,15 +235,6 @@ const RecentTransactions: React.FC = () => {
       month: "short",
       day: "numeric",
     });
-  };
-
-  const formatAmount = (amount: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: user?.preferences?.currency || "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(amount));
   };
 
   if (loading) {
@@ -344,7 +340,6 @@ const RecentTransactions: React.FC = () => {
             transaction={transaction}
             category={categories[index]}
             formatDate={formatDate}
-            formatAmount={formatAmount}
             isHovered={hoveredRow === transaction.id}
             onHover={setHoveredRow}
           />

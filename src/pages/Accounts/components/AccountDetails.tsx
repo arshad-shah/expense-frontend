@@ -21,8 +21,9 @@ import {
 } from "lucide-react";
 import type { Account, Transaction } from "@/types";
 import { motion } from "framer-motion";
-import { formatDate, parseTimestamp } from "@/lib/utils";
+import { formatCurrency, formatDate, parseTimestamp } from "@/lib/utils";
 import { Tabs } from "@/components/Tabs";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AccountDetailsModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
   account,
   transactions,
 }) => {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<"week" | "month">(
     "month",
   );
@@ -115,15 +117,6 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
   const stats = calculateStatistics();
   const lastSyncDate = parseTimestamp(account.stats.lastSync);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: account.currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Account Details">
       <div>
@@ -157,7 +150,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                   Current Balance
                 </h4>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(account.balance)}
+                  {formatCurrency(
+                    account.balance,
+                    user?.preferences.currency || "USD",
+                  )}
                 </p>
               </div>
             </div>
@@ -213,7 +209,9 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                   <YAxis
                     tick={{ fontSize: 12, fill: "#6B7280" }}
                     tickLine={false}
-                    tickFormatter={(value) => formatCurrency(value)}
+                    tickFormatter={(value) =>
+                      formatCurrency(value, user?.preferences.currency || "USD")
+                    }
                   />
                   <Tooltip
                     contentStyle={{
@@ -223,7 +221,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                       padding: "0.5rem",
                     }}
                     formatter={(value) => [
-                      formatCurrency(Number(value)),
+                      formatCurrency(
+                        Number(value),
+                        user?.preferences.currency || "USD",
+                      ),
                       "Balance Change",
                     ]}
                   />
@@ -252,7 +253,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 <span className="font-medium">Income</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 mb-1">
-                {formatCurrency(stats.totalIncome)}
+                {formatCurrency(
+                  stats.totalIncome,
+                  user?.preferences.currency || "USD",
+                )}
               </p>
               <p className="text-sm text-gray-500">This {selectedPeriod}</p>
             </motion.div>
@@ -268,7 +272,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 <span className="font-medium">Expenses</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 mb-1">
-                {formatCurrency(stats.totalExpenses)}
+                {formatCurrency(
+                  stats.totalExpenses,
+                  user?.preferences.currency || "USD",
+                )}
               </p>
               <p className="text-sm text-gray-500">This {selectedPeriod}</p>
             </motion.div>
@@ -284,7 +291,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 </span>
               </div>
               <p className="text-lg font-bold text-gray-900">
-                {formatCurrency(stats.avgTransaction)}
+                {formatCurrency(
+                  stats.avgTransaction,
+                  user?.preferences.currency || "USD",
+                )}
               </p>
             </div>
 
@@ -296,7 +306,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                 </span>
               </div>
               <p className="text-lg font-bold text-gray-900">
-                {formatCurrency(stats.largestTransaction)}
+                {formatCurrency(
+                  stats.largestTransaction,
+                  user?.preferences.currency || "USD",
+                )}
               </p>
             </div>
           </div>
@@ -334,7 +347,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
                     <p
                       className={`text-sm ${stats.netChange >= 0 ? "text-emerald-600" : "text-red-600"}`}
                     >
-                      {formatCurrency(Math.abs(stats.netChange))}
+                      {formatCurrency(
+                        Math.abs(stats.netChange),
+                        user?.preferences.currency || "USD",
+                      )}
                       {stats.netChange >= 0 ? " profit" : " loss"}
                     </p>
                   </div>

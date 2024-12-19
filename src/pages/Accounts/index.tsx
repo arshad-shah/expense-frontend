@@ -24,6 +24,7 @@ import {
   ErrorResponse,
   FirebaseErrorHandler,
 } from "@/lib/firebase-error-handler";
+import { formatCurrency } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 9; // 3x3 grid
 
@@ -135,21 +136,13 @@ const Accounts: React.FC = () => {
         return AlertCircle;
     }
   };
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: user?.preferences?.currency || "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const getTotalBalance = () => {
     const totalBalance = accountsData.items.reduce(
       (sum, account) => sum + account.balance,
       0,
     );
-    return formatCurrency(totalBalance);
+    return formatCurrency(totalBalance, user?.preferences.currency || "USD");
   };
 
   if (loading) {

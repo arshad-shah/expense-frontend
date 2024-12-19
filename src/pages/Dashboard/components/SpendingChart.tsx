@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getTransactions } from "@/services/TransactionService";
 import type { Transaction, TransactionFilters } from "@/types";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface MonthlySpending {
   month: string;
@@ -24,15 +25,6 @@ const SpendingChart = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { user } = useAuth();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: user?.preferences.currency || "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -160,13 +152,21 @@ const SpendingChart = () => {
             <div className="flex items-center space-x-2">
               <ArrowDownRight className="h-4 w-4 text-indigo-600" />
               <p className="text-indigo-600">
-                Spending: {formatCurrency(payload[0].value)}
+                Spending:{" "}
+                {formatCurrency(
+                  payload[0].value,
+                  user?.preferences?.currency || "USD",
+                )}
               </p>
             </div>
             <div className="flex items-center space-x-2">
               <ArrowUpRight className="h-4 w-4 text-emerald-600" />
               <p className="text-emerald-600">
-                Income: {formatCurrency(payload[1].value)}
+                Income:{" "}
+                {formatCurrency(
+                  payload[1].value,
+                  user?.preferences?.currency || "USD",
+                )}
               </p>
             </div>
           </div>
@@ -217,7 +217,9 @@ const SpendingChart = () => {
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => formatCurrency(value)}
+              tickFormatter={(value) =>
+                formatCurrency(value, user?.preferences?.currency || "USD")
+              }
             />
 
             <Tooltip
