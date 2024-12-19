@@ -19,6 +19,8 @@ export const Checkbox = React.forwardRef<
   <div className="flex items-center gap-2">
     <CheckboxPrimitive.Root
       ref={ref}
+      aria-label={label}
+      aria-disabled={props.disabled}
       className={`
         peer h-5 w-5 shrink-0 rounded-md border border-gray-200 bg-white
         transition-all duration-200 ease-out shadow-sm 

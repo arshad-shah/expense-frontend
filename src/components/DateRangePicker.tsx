@@ -75,6 +75,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         onClick={decreaseMonth}
         disabled={prevMonthButtonDisabled}
         className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+        aria-label="Previous Month"
       >
         <ChevronLeft className="h-5 w-5 text-gray-600" />
       </motion.button>
@@ -89,6 +90,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         onClick={increaseMonth}
         disabled={nextMonthButtonDisabled}
         className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+        aria-label="Next Month"
       >
         <ChevronRight className="h-5 w-5 text-gray-600" />
       </motion.button>
@@ -118,7 +120,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           className="text-violet-500 mr-3"
           whileHover={{ rotate: 15 }}
         >
-          <CalendarDays className="h-5 w-5" />
+          <CalendarDays data-testid="Calender-icon" className="h-5 w-5" />
         </motion.span>
         <span className="flex-1 text-sm font-medium text-gray-700">
           {value}
@@ -142,6 +144,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="block text-base font-semibold text-gray-900"
+            aria-label={label}
           >
             {label}
           </motion.label>
@@ -151,7 +154,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       {/* Date Pickers Container */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Start Date</Label>
+          <Label aria-label="Start Date">Start Date</Label>
           <DatePicker
             selected={new Date(dateRange.startDate)}
             onChange={handleStartDateChange}
@@ -181,7 +184,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label>End Date</Label>
+          <Label aria-label="End Date">End Date</Label>
           <DatePicker
             selected={new Date(dateRange.endDate)}
             onChange={handleEndDateChange}
