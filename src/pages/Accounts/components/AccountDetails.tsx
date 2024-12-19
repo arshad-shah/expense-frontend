@@ -182,6 +182,7 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
         {/* Main Content */}
         <div className="space-y-6">
           <Tabs
+            variant="filled"
             items={[
               { value: "week", label: "Week" },
               { value: "month", label: "Month" },

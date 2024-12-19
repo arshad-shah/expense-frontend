@@ -36,19 +36,10 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
     bankName: "",
     balance: 0,
     currency: "USD",
-    metadata: {}
+    metadata: {},
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const accountTypes: AccountType[] = [
-    "CHECKING",
-    "SAVINGS",
-    "CREDIT_CARD",
-    "CASH",
-    "INVESTMENT",
-  ];
-
   useEffect(() => {
     if (account) {
       setFormData({
@@ -57,7 +48,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
         bankName: account.bankName,
         balance: account.balance,
         currency: account.currency,
-        metadata: account.metadata || {}
+        metadata: account.metadata || {},
       });
     }
   }, [account]);
@@ -78,7 +69,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
 
     try {
       const response = await updateAccount(user.id, account.id, formData);
-      
+
       if (response.status === 200) {
         onSave();
         onClose();
@@ -95,10 +86,10 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
 
   const handleAccountTypeChange = (value: string) => {
     // Reset balance for credit cards
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       accountType: value as AccountType,
-      balance: value === "CREDIT_CARD" ? 0 : prev.balance
+      balance: value === "CREDIT_CARD" ? 0 : prev.balance,
     }));
   };
 
@@ -107,11 +98,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Error Message */}
         {error && (
-          <Alert 
-            variant="error" 
-            title="Error" 
-            onDismiss={() => setError("")}
-          >
+          <Alert variant="error" title="Error" onDismiss={() => setError("")}>
             {error}
           </Alert>
         )}
@@ -131,95 +118,87 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
 
         {/* Account Type */}
 
+        <Select
+          value={formData.accountType}
+          onValueChange={handleAccountTypeChange}
+          disabled={loading}
+        >
+          <SelectTrigger label="Account Type" className="w-full">
+            <SelectValue placeholder="Select account type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="CHECKING">Checking</SelectItem>
+              <SelectItem value="SAVINGS">Savings</SelectItem>
+              <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+              <SelectItem value="CASH">Cash</SelectItem>
+              <SelectItem value="INVESTMENT">Investment</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        {/* Bank Name */}
+
+        <Input
+          type="text"
+          label="Bank Name"
+          value={formData.bankName}
+          onChange={(e) => handleInputChange("bankName", e.target.value)}
+          required
+          placeholder="Enter bank name"
+          disabled={loading}
+        />
+
+        {/* Balance and Currency */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            type="number"
+            label="Balance"
+            value={formData.balance}
+            onChange={(e) => handleInputChange("balance", e.target.value)}
+            step="0.01"
+            required
+            placeholder="Enter balance"
+            disabled={loading || formData.accountType === "CREDIT_CARD"}
+          />
+          {formData.accountType === "CREDIT_CARD" && (
+            <p className="mt-1 text-sm text-gray-500">
+              Credit card accounts have a zero base balance
+            </p>
+          )}
+
           <Select
-            value={formData.accountType}
-            onValueChange={handleAccountTypeChange}
+            value={formData.currency}
+            onValueChange={(value) => handleInputChange("currency", value)}
             disabled={loading}
           >
-            <SelectTrigger label="Account Type" className="w-full">
-              <SelectValue placeholder="Select account type" />
+            <SelectTrigger label="Currency" className="w-full">
+              <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {accountTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type.replace("_", " ")}
+                {CURRENCY.map((currency) => (
+                  <SelectItem key={currency.label} value={currency.value}>
+                    {currency.label}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-
-        {/* Bank Name */}
-
-          <Input
-            type="text"
-            label="Bank Name"
-            value={formData.bankName}
-            onChange={(e) => handleInputChange("bankName", e.target.value)}
-            required
-            placeholder="Enter bank name"
-            disabled={loading}
-          />
-
-        {/* Balance and Currency */}
-        <div className="grid grid-cols-2 gap-4">
-            <Input
-              type="number"
-              label="Balance"
-              value={formData.balance}
-              onChange={(e) => handleInputChange("balance", e.target.value)}
-              step="0.01"
-              required
-              placeholder="Enter balance"
-              disabled={loading || formData.accountType === "CREDIT_CARD"}
-            />
-            {formData.accountType === "CREDIT_CARD" && (
-              <p className="mt-1 text-sm text-gray-500">
-                Credit card accounts have a zero base balance
-              </p>
-            )}
-
-            <Select
-              value={formData.currency}
-              onValueChange={(value) => handleInputChange("currency", value)}
-              disabled={loading}
-            >
-              <SelectTrigger label="Currency" className="w-full">
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {CURRENCY.map((currency) => (
-                    <SelectItem key={currency.label} value={currency.value}>
-                      {currency.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end space-x-3">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={onClose}
             disabled={loading}
           >
             Cancel
           </Button>
           <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                Saving...
-              </>
-            ) : (
-              <>
-                Save
-              </>
-            )}
+            {loading ? <>Saving...</> : <>Save</>}
           </Button>
         </div>
       </form>

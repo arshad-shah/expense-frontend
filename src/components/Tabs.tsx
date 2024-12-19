@@ -127,7 +127,7 @@ export const Tabs = ({
   }, [value, items]);
 
   const containerClasses = cn(
-    "relative rounded-xl p-1.5 border border-black",
+    "rounded-xl p-1.5",
     vertical ? "flex-col" : "flex-row",
     colorClasses[color].container,
     fullWidth ? "w-full" : "w-fit",
@@ -152,6 +152,9 @@ export const Tabs = ({
           colorClasses[color].indicator,
           "transition-all duration-300 ease-in-out shadow-lg",
           variant === "pills" ? "rounded-full" : "rounded-lg",
+          variant === "minimal" && "shadow-none",
+          variant === "outlined" && "border border-white",
+          variant === "filled" && "border border-transparent",
         )}
         style={{
           width: activeIndicatorStyle.width,

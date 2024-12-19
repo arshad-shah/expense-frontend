@@ -18,7 +18,7 @@ export const Dialog: React.FC<DialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex items-center justify-center min-h-screen px-4">
         {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
