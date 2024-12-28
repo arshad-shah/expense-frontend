@@ -35,19 +35,19 @@ import { updateBudgetCategories } from "./BudgetService";
 
 export const createTransaction = async (
   userId: string,
-  transactionInput: TransactionInput
+  transactionInput: TransactionInput,
 ): Promise<ApiResponse<Transaction>> => {
   try {
     const accountRef = doc(
       db,
       CollectionPaths.accounts(userId),
-      transactionInput.accountId
+      transactionInput.accountId,
     );
 
     const categoryRef = doc(
       db,
       CollectionPaths.categories(userId),
-      transactionInput.categoryId
+      transactionInput.categoryId,
     );
 
     // Get related documents first
@@ -68,7 +68,11 @@ export const createTransaction = async (
     const amount = Number(transactionInput.amount);
 
     // Validate sufficient funds for expenses
-    if (transactionInput.type === "EXPENSE" && amount > account.balance) {
+    if (
+      (account.accountType !== "CREDIT_CARD" && transactionInput.type) ===
+        "EXPENSE" &&
+      amount > account.balance
+    ) {
       return { status: 400, error: "Insufficient funds in account" };
     }
 
@@ -77,7 +81,7 @@ export const createTransaction = async (
     // Create the transaction
     const transactionsPath = CollectionPaths.transactions(
       userId,
-      transactionInput.accountId
+      transactionInput.accountId,
     );
 
     const transactionRef = doc(collection(db, transactionsPath));
@@ -131,16 +135,13 @@ export const createTransaction = async (
     // After transaction is created, update any budgets that contain this category
     const budgetsRef = collection(db, CollectionPaths.budgets(userId));
     const budgetsSnapshot = await getDocs(
-      query(
-        budgetsRef,
-        where("isActive", "==", true),
-      )
+      query(budgetsRef, where("isActive", "==", true)),
     );
 
     for (const budgetDoc of budgetsSnapshot.docs) {
       const budget = budgetDoc.data() as Budget;
       const categoryEntry = Object.entries(budget.categories).find(
-        ([, c]) => c.categoryId === transactionInput.categoryId
+        ([, c]) => c.categoryId === transactionInput.categoryId,
       );
 
       if (!categoryEntry) continue;
@@ -152,24 +153,23 @@ export const createTransaction = async (
 
         const spent = categoryAllocation.spent + transactionInput.amount;
 
-
         let status: BudgetStatus = "ON_TRACK";
         // Status should be WARNING when the amount spent is greater than 80% of the allocated amount
         if (spent > 0.8 * categoryAllocation.amount) {
           status = "WARNING";
         }
 
-        if(categoryAllocation.amount - spent < 0) {
+        if (categoryAllocation.amount - spent < 0) {
           status = "EXCEEDED";
         }
-        
+
         updatedCategories[categoryKey] = {
           ...categoryAllocation,
           spent: spent,
           remaining: categoryAllocation.amount - spent,
           status: status,
         };
-        
+
         await updateBudgetCategories(userId, budgetDoc.id, updatedCategories);
       }
     }
@@ -195,13 +195,13 @@ export const createTransaction = async (
 export const updateTransaction = async (
   userId: string,
   transactionId: string,
-  updates: Partial<TransactionInput>
+  updates: Partial<TransactionInput>,
 ): Promise<ApiResponse<Transaction>> => {
   try {
     const transactionRef = doc(
       db,
       CollectionPaths.transactions(userId, updates.accountId || ""),
-      transactionId
+      transactionId,
     );
     const transactionDoc = await getDoc(transactionRef);
 
@@ -218,7 +218,7 @@ export const updateTransaction = async (
       const oldAccountRef = doc(
         db,
         CollectionPaths.accounts(userId),
-        currentTransaction.accountId
+        currentTransaction.accountId,
       );
       const oldBalance =
         currentTransaction.type === "INCOME"
@@ -234,7 +234,7 @@ export const updateTransaction = async (
       const newAccountRef = doc(
         db,
         CollectionPaths.accounts(userId),
-        updates.accountId || currentTransaction.accountId
+        updates.accountId || currentTransaction.accountId,
       );
       const newAmount = updates.amount || currentTransaction.amount;
       const newType = updates.type || currentTransaction.type;
@@ -283,20 +283,19 @@ export const getTransactions = async (
   userId: string,
   filters?: TransactionFilters,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<ApiResponse<PaginatedResponse<Transaction>>> => {
   try {
-
     //account ids are part of the path we ned to make a call for each one of them
     const docSnap = await getDocs(
-      collection(db, CollectionPaths.accounts(userId))
+      collection(db, CollectionPaths.accounts(userId)),
     );
     let transactions: Transaction[] = [];
 
     for (const doc of docSnap.docs) {
       let q = query(
         collection(db, CollectionPaths.transactions(userId, doc.id)),
-        orderBy("transactionDate", "desc")
+        orderBy("transactionDate", "desc"),
       );
 
       // Apply filters
@@ -304,7 +303,7 @@ export const getTransactions = async (
         q = query(
           q,
           where("transactionDate", ">=", filters.dateRange.startDate),
-          where("transactionDate", "<=", filters.dateRange.endDate)
+          where("transactionDate", "<=", filters.dateRange.endDate),
         );
       }
 
@@ -340,7 +339,7 @@ export const getTransactions = async (
             updatedAt: data.updatedAt?.toString(),
             deletedAt: data.deletedAt?.toString(),
           };
-        })
+        }),
       );
     }
     return {
@@ -368,13 +367,13 @@ export const getTransactions = async (
 export const deleteTransaction = async (
   userId: string,
   accountId: string,
-  transactionId: string
+  transactionId: string,
 ): Promise<ApiResponse<void>> => {
   try {
     const transactionRef = doc(
       db,
       CollectionPaths.transactions(userId, accountId),
-      transactionId
+      transactionId,
     );
     const transactionDoc = await getDoc(transactionRef);
 
@@ -389,7 +388,7 @@ export const deleteTransaction = async (
     const accountRef = doc(
       db,
       CollectionPaths.accounts(userId),
-      transaction.accountId
+      transaction.accountId,
     );
     const balanceChange =
       transaction.type === "INCOME" ? -transaction.amount : transaction.amount;
@@ -409,16 +408,13 @@ export const deleteTransaction = async (
     //udpate the category stats on the budget
     const budgetsRef = collection(db, CollectionPaths.budgets(userId));
     const budgetsSnapshot = await getDocs(
-      query(
-        budgetsRef,
-        where("isActive", "==", true),
-      )
+      query(budgetsRef, where("isActive", "==", true)),
     );
 
     for (const budgetDoc of budgetsSnapshot.docs) {
       const budget = budgetDoc.data() as Budget;
       const categoryEntry = Object.entries(budget.categories).find(
-        ([, c]) => c.categoryId === transaction.categoryId
+        ([, c]) => c.categoryId === transaction.categoryId,
       );
 
       if (!categoryEntry) continue;
@@ -444,8 +440,8 @@ export const deleteTransaction = async (
           ...categoryAllocation,
           spent: categoryAllocation.spent - transaction.amount,
           remaining:
-        categoryAllocation.amount -
-        (categoryAllocation.spent - transaction.amount),
+            categoryAllocation.amount -
+            (categoryAllocation.spent - transaction.amount),
           status: status,
         };
         await updateBudgetCategories(userId, budgetDoc.id, updatedCategories);
@@ -471,11 +467,11 @@ export const deleteTransaction = async (
  */
 export const getRecentTransactions = async (
   userId: string,
-  limit: number = 7
+  limit: number = 7,
 ): Promise<ApiResponse<Transaction[]>> => {
   try {
     const accountSnapshot = await getDocs(
-      collection(db, CollectionPaths.accounts(userId))
+      collection(db, CollectionPaths.accounts(userId)),
     );
     const accountIds = accountSnapshot.docs.map((doc) => doc.id);
     const transactions: Transaction[] = [];
@@ -484,7 +480,7 @@ export const getRecentTransactions = async (
       const q = query(
         collection(db, CollectionPaths.transactions(userId, accountId)),
         orderBy("transactionDate", "desc"),
-        limitQuery(limit)
+        limitQuery(limit),
       );
 
       const querySnapshot = await getDocs(q);
@@ -498,7 +494,7 @@ export const getRecentTransactions = async (
             updatedAt: data.updatedAt?.toString(),
             deletedAt: data.deletedAt?.toString(),
           };
-        })
+        }),
       );
     }
 
@@ -507,7 +503,7 @@ export const getRecentTransactions = async (
       data: transactions.sort(
         (a, b) =>
           new Date(b.transactionDate).getTime() -
-          new Date(a.transactionDate).getTime()
+          new Date(a.transactionDate).getTime(),
       ),
     };
   } catch (error) {

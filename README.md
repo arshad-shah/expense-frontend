@@ -5,12 +5,14 @@ A modern, full-featured expense tracking application built with React, TypeScrip
 ## 🌟 Features
 
 - **Account Management**
+
   - Multiple account types (Checking, Savings, Credit Card, Cash, Investment)
   - Real-time balance tracking
   - Account-specific transaction history
   - Custom account categories and metadata
 
 - **Transaction Tracking**
+
   - Income and expense tracking
   - Category-based organization
   - Detailed transaction history
@@ -18,12 +20,14 @@ A modern, full-featured expense tracking application built with React, TypeScrip
   - Advanced filtering and search capabilities
 
 - **Budget Management**
+
   - Custom budget creation and tracking
   - Category-based budget allocation
   - Progress monitoring and alerts
   - Flexible budget periods (daily, weekly, monthly, yearly)
 
 - **Analytics & Insights**
+
   - Spending trends visualization
   - Category-based analysis
   - Interactive charts and graphs
@@ -39,6 +43,7 @@ A modern, full-featured expense tracking application built with React, TypeScrip
 ## 🔧 Technology Stack
 
 - **Frontend:**
+
   - React 18
   - TypeScript
   - Vite
@@ -48,11 +53,13 @@ A modern, full-featured expense tracking application built with React, TypeScrip
   - @dnd-kit for drag-and-drop
 
 - **Authentication & Database:**
+
   - Firebase Authentication
   - Firestore
   - Real-time data sync
 
 - **State Management & Routing:**
+
   - React Context
   - React Router v7
 
@@ -74,17 +81,20 @@ A modern, full-featured expense tracking application built with React, TypeScrip
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/expense-tracker.git
    cd expense-tracker
    ```
 
 2. Install dependencies:
+
    ```bash
    pnpm install
    ```
 
 3. Create a `.env` file in the root directory with your Firebase configuration:
+
    ```env
    VITE_FIREBASE_API_KEY=your_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -146,6 +156,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 Arshad Shah
+
 - GitHub: [@arshad-shah](https://github.com/arshad-shah)
 - LinkedIn: [arshadshah](https://www.linkedin.com/in/arshadshah)
 

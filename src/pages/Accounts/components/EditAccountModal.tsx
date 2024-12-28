@@ -159,13 +159,8 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
             step="0.01"
             required
             placeholder="Enter balance"
-            disabled={loading || formData.accountType === "CREDIT_CARD"}
+            disabled={loading}
           />
-          {formData.accountType === "CREDIT_CARD" && (
-            <p className="mt-1 text-sm text-gray-500">
-              Credit card accounts have a zero base balance
-            </p>
-          )}
 
           <Select
             value={formData.currency}
@@ -197,8 +192,8 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? <>Saving...</> : <>Save</>}
+          <Button type="submit" disabled={loading} isLoading={loading}>
+            Save
           </Button>
         </div>
       </form>

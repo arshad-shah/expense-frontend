@@ -155,19 +155,14 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           onChange={(e) =>
             setFormData((prev) => ({
               ...prev,
-              balance: parseFloat(e.target.value) || 0,
+              balance: parseFloat(e.target.value),
             }))
           }
           required
           placeholder="Enter initial balance"
           step="0.01"
-          disabled={isSubmitting || formData.accountType === "CREDIT_CARD"}
+          disabled={isSubmitting}
         />
-        {formData.accountType === "CREDIT_CARD" && (
-          <p className="mt-1 text-sm text-gray-500">
-            Credit card accounts start with a zero balance
-          </p>
-        )}
 
         {/* Currency */}
 
@@ -201,8 +196,13 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
           >
             Cancel
           </Button>
-          <Button type="submit" className="px-4" disabled={isSubmitting}>
-            {isSubmitting ? "Adding Account..." : "Add Account"}
+          <Button
+            type="submit"
+            className="px-4"
+            disabled={isSubmitting}
+            isLoading={isSubmitting}
+          >
+            Add Account
           </Button>
         </div>
       </form>

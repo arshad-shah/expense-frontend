@@ -81,16 +81,18 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       );
 
       if (!selectedAccount) {
-        alert("Invalid account selected.");
+        setError("Invalid account selected.");
         return;
       }
 
       // Check if the transaction amount exceeds the account balance
       if (
+        initialAccounts.find((acc) => acc.id === formData.accountId)
+          ?.accountType !== "CREDIT_CARD" &&
         formData.type === "EXPENSE" &&
         formData.amount > selectedAccount.balance
       ) {
-        alert(
+        setError(
           `Insufficient funds! The selected account only has ${selectedAccount.balance.toFixed(2)} available.`,
         );
         return;
@@ -112,6 +114,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         });
       } else {
         console.error("User ID is undefined");
+        setError("Error creating transaction. Please try again.");
       }
 
       // make sure we remove the amount from the account balance
@@ -128,6 +131,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           });
         } else {
           console.error("User ID is undefined");
+          setError("Error updating account balance. Please try again.");
         }
       }
 
@@ -145,6 +149,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       });
     } catch (error) {
       console.error("Error creating transaction:", error);
+      setError("Error creating transaction. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -179,18 +184,21 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </SelectContent>
         </Select>
         {/* Warning */}
-        {formData.type === "EXPENSE" && formData.amount > 0 && (
-          <p className="text-sm text-red-600 mt-1">
-            {initialAccounts &&
-              initialAccounts.find((acc) => acc.id === formData.accountId)
-                ?.balance !== undefined &&
-              initialAccounts.find((acc) => acc.id === formData.accountId)!
-                .balance < formData.amount &&
-              `Insufficient funds! The available balance is ${initialAccounts
-                .find((acc) => acc.id === formData.accountId)!
-                .balance.toFixed(2)}.`}
-          </p>
-        )}
+        {initialAccounts.find((acc) => acc.id === formData.accountId)
+          ?.accountType !== "CREDIT_CARD" &&
+          formData.type === "EXPENSE" &&
+          formData.amount > 0 && (
+            <p className="text-sm text-red-600 mt-1">
+              {initialAccounts &&
+                initialAccounts.find((acc) => acc.id === formData.accountId)
+                  ?.balance !== undefined &&
+                initialAccounts.find((acc) => acc.id === formData.accountId)!
+                  .balance < formData.amount &&
+                `Insufficient funds! The available balance is ${initialAccounts
+                  .find((acc) => acc.id === formData.accountId)!
+                  .balance.toFixed(2)}.`}
+            </p>
+          )}
 
         {/* Transaction Type */}
         <Select
@@ -208,8 +216,15 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="INCOME">Income</SelectItem>
-              <SelectItem value="EXPENSE">Expense</SelectItem>
+              {initialAccounts.find((acc) => acc.id === formData.accountId)
+                ?.accountType === "CREDIT_CARD" ? (
+                <SelectItem value="EXPENSE">Expense</SelectItem>
+              ) : (
+                <>
+                  <SelectItem value="INCOME">Income</SelectItem>
+                  <SelectItem value="EXPENSE">Expense</SelectItem>
+                </>
+              )}
             </SelectGroup>
           </SelectContent>
         </Select>
