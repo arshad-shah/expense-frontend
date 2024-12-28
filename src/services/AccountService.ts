@@ -35,7 +35,7 @@ const DEFAULT_ACCOUNT_STATS: AccountStats = {
 export const getAccounts = async (
   userId: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<ApiResponse<PaginatedResponse<Account>>> => {
   try {
     const accountsPath = CollectionPaths.accounts(userId);
@@ -84,7 +84,7 @@ export const getAccounts = async (
  */
 export const createAccount = async (
   userId: string,
-  accountInput: AccountInput
+  accountInput: AccountInput,
 ): Promise<ApiResponse<Account>> => {
   try {
     // Validate required fields
@@ -108,7 +108,10 @@ export const createAccount = async (
       accountType: accountInput.accountType,
       bankName: accountInput.bankName,
       currency: accountInput.currency,
-      balance: accountInput.balance || 0,
+      balance:
+        accountInput.accountType === "CREDIT_CARD"
+          ? -Math.abs(accountInput.balance || 0)
+          : accountInput.balance || 0,
       metadata: accountInput.metadata || {},
       stats: DEFAULT_ACCOUNT_STATS,
       createdAt: serverTimestamp(),
@@ -146,7 +149,7 @@ export const createAccount = async (
  */
 export const getAccountById = async (
   userId: string,
-  accountId: string
+  accountId: string,
 ): Promise<ApiResponse<Account>> => {
   try {
     const accountRef = doc(db, CollectionPaths.accounts(userId), accountId);
@@ -188,7 +191,7 @@ export const getAccountById = async (
 export const updateAccount = async (
   userId: string,
   accountId: string,
-  updates: Partial<Omit<Account, "id" | "userId" | "stats">>
+  updates: Partial<Omit<Account, "id" | "userId" | "stats">>,
 ): Promise<ApiResponse<Account>> => {
   try {
     const accountRef = doc(db, CollectionPaths.accounts(userId), accountId);
@@ -224,7 +227,7 @@ export const updateAccount = async (
  */
 export const deleteAccount = async (
   userId: string,
-  accountId: string
+  accountId: string,
 ): Promise<ApiResponse<void>> => {
   try {
     const accountRef = doc(db, CollectionPaths.accounts(userId), accountId);
@@ -246,10 +249,10 @@ export const deleteAccount = async (
     // Mark all transactions as inactive
     const transactionsRef = collection(
       db,
-      CollectionPaths.transactions(userId, accountId)
+      CollectionPaths.transactions(userId, accountId),
     );
     const transactionsSnapshot = await getDocs(
-      query(transactionsRef, where("isActive", "==", true))
+      query(transactionsRef, where("isActive", "==", true)),
     );
 
     transactionsSnapshot.forEach((doc) => {
@@ -286,7 +289,7 @@ export const getAccountsByType = async (
   userId: string,
   accountType: AccountType,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<ApiResponse<PaginatedResponse<Account>>> => {
   try {
     const accountsPath = CollectionPaths.accounts(userId);
@@ -294,7 +297,7 @@ export const getAccountsByType = async (
     const q = query(
       accountsRef,
       where("accountType", "==", accountType),
-      where("isActive", "==", true)
+      where("isActive", "==", true),
     );
 
     const snapshot = await getDocs(q);
