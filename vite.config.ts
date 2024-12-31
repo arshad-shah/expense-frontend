@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         ],
       },
       include: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}"],
-      exclude: ["node_modules", "dist"],
+      exclude: ["node_modules", "dist", "src/**/*.stories.*"],
     },
   };
 
