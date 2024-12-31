@@ -191,9 +191,8 @@ const Transactions: React.FC = () => {
   const handleCloseModal = (modal: keyof typeof modals) => {
     setModals((prev) => ({ ...prev, [modal]: false }));
   };
-
   // Loading State
-  if (loading.transactions && loading.accounts) {
+  if (loading.transactions || loading.accounts) {
     return <PageLoader text="Loading your transactions..." />;
   }
 

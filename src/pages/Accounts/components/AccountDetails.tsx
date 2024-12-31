@@ -178,7 +178,6 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
         {/* Main Content */}
         <div className="space-y-6">
           <Tabs
-            variant="filled"
             items={[
               { value: "week", label: "Week" },
               { value: "month", label: "Month" },
@@ -200,7 +199,10 @@ const AccountDetailsModal: React.FC<AccountDetailsModalProps> = ({
             </div>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.chartData}>
+                <LineChart
+                  data={stats.chartData}
+                  margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                >
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12, fill: "#6B7280" }}

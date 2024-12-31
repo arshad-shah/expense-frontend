@@ -25,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { FirebaseErrorHandler } from "@/lib/firebase-error-handler";
 
 const ProfileComponent = () => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, firebaseUser } = useAuth();
   const navigate = useNavigate();
   const { updateProfile, updatePreferences, isUpdating } = useUser();
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +36,7 @@ const ProfileComponent = () => {
     newEmail: "",
     currentPassword: "",
   });
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -231,14 +232,19 @@ const ProfileComponent = () => {
                   {/* Email with Action */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <p className="text-gray-500">{authUser.email}</p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsChangingEmail(true)}
-                      className="text-sm text-indigo-600 hover:text-indigo-700"
-                    >
-                      Change email
-                    </Button>
+                    {firebaseUser &&
+                      firebaseUser.providerData.find(
+                        (provider) => provider.providerId === "password",
+                      ) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsChangingEmail(true)}
+                          className="text-sm text-indigo-600 hover:text-indigo-700"
+                        >
+                          Change email
+                        </Button>
+                      )}
                   </div>
                   {/* Member Since */}
                   <p className="text-sm text-gray-400 mt-1">
@@ -375,10 +381,7 @@ const ProfileComponent = () => {
         <div className="border rounded-lg border-red-200 p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <h3 className="text-base font-medium text-red-700">
-                Delete Account
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-md text-gray-600 mt-1">
                 Permanently delete your account and all associated data
               </p>
             </div>

@@ -13,6 +13,7 @@ import { getTransactions } from "@/services/TransactionService";
 import type { Transaction, TransactionFilters } from "@/types";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import Alert from "@/components/Alert";
 
 interface MonthlySpending {
   month: string;
@@ -75,19 +76,24 @@ const SpendingChart = () => {
       string,
       { spending: number; income: number }
     >();
-    const months = [];
+    const months: string[] = [];
 
     // Initialize last 6 months
-    for (let i = 0; i < 6; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      const monthKey = date.toLocaleString("en-US", {
+    const now = new Date();
+    const monthsArray = Array.from({ length: 6 }, (_, i) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      return date.toLocaleString("en-US", {
         month: "short",
         year: "2-digit",
       });
-      months.unshift(monthKey);
+    }).reverse();
+
+    const uniqueMonths = Array.from(new Set(monthsArray));
+
+    uniqueMonths.forEach((monthKey) => {
+      months.push(monthKey);
       monthlyTotals.set(monthKey, { spending: 0, income: 0 });
-    }
+    });
 
     // Process transactions
     transactions.forEach((transaction) => {
@@ -118,14 +124,6 @@ const SpendingChart = () => {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex flex-col space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Spending Trends
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
-            <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
-            <div className="animate-pulse bg-gray-100 h-16 rounded-lg"></div>
-          </div>
           <div className="h-80 animate-pulse bg-gray-100 rounded-lg"></div>
         </div>
       </div>
@@ -135,10 +133,9 @@ const SpendingChart = () => {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900">Spending Trends</h2>
-        <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg">
+        <Alert title="Error" variant="error">
           {error}
-        </div>
+        </Alert>
       </div>
     );
   }
@@ -178,14 +175,11 @@ const SpendingChart = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">
-        Spending Trends
-      </h2>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
-            margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+            margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
           >
             <defs>
               <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">

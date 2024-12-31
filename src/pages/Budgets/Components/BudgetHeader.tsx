@@ -95,7 +95,6 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
               <Button
                 variant="primary"
                 size="md"

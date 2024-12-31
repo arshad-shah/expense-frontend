@@ -36,9 +36,6 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
               Transactions
             </h1>
           </div>
-          <p className="mt-1 text-sm text-gray-500 hidden sm:flex items-center gap-2">
-            Manage your income and expenses
-          </p>
         </motion.div>
 
         {/* Action Buttons */}
@@ -119,7 +116,6 @@ const TransactionHeader: React.FC<TransactionHeaderProps> = ({
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
               <Button
                 variant="primary"
                 size="md"

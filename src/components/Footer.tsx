@@ -57,8 +57,8 @@ const Footer: React.FC = () => {
         </svg>
       </div>
 
-      <div className="container mx-auto px-6 py-12">
-        <div className="flex flex-col items-center space-y-6">
+      <div className="container mx-auto px-4 pt-8 pb-4">
+        <div className="flex flex-col items-center space-y-3">
           {/* Social Links */}
           <div className="flex space-x-4">
             {socialLinks.map((link) => (
@@ -94,7 +94,7 @@ const Footer: React.FC = () => {
           </div>
 
           {/* Divider */}
-          <div className="h-px w-16 bg-gradient-to-r from-transparent via-gray-400 to-transparent" />
+          <div className="h-px w-32 bg-gradient-to-r from-transparent via-gray-400 to-transparent" />
 
           {/* Copyright and Credits */}
           <div className="flex flex-col items-center space-y-2 text-center">
@@ -116,8 +116,8 @@ const Footer: React.FC = () => {
             {["React", "Tailwind CSS", "Vite", "Firebase"].map((tech) => (
               <motion.span
                 key={tech}
-                className="rounded-full bg-gray-800 px-3 py-1 text-xs text-gray-400"
-                whileHover={{ scale: 1.05, backgroundColor: "#1f2937" }}
+                className="rounded-full bg-gray-700 px-3 py-1 text-xs text-gray-400"
+                whileHover={{ scale: 1.05, backgroundColor: "#1f2938" }}
               >
                 {tech}
               </motion.span>

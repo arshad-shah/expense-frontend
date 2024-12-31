@@ -300,7 +300,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   </span>
                   <span className="text-xs text-gray-500 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {formatDate(transaction.transactionDate)}
+                    {formatDate(transaction.transactionDate, {
+                      shortFormat: true,
+                    })}
                   </span>
                 </div>
               </div>

@@ -48,7 +48,8 @@ export const Dropdown = ({
         const scrollX = window.scrollX;
 
         // Calculate initial position
-        let top = rect.bottom + scrollY;
+        let top = rect.bottom;
+
         let left =
           position === "right"
             ? rect.right - dropdownRect.width + scrollX
@@ -67,6 +68,11 @@ export const Dropdown = ({
         // Check if dropdown would go off screen at the bottom
         if (top + dropdownRect.height > window.innerHeight + scrollY) {
           top = rect.top - dropdownRect.height + scrollY;
+        }
+
+        //if alignTo has moved off screen, close the dropdown
+        if (rect.top < 20) {
+          onClose();
         }
 
         setDropdownPosition({ top, left });

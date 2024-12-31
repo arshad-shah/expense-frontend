@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   DndContext,
@@ -7,10 +7,11 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  closestCenter,
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  CollisionDetection,
+  rectIntersection,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -25,38 +26,63 @@ import BudgetOverview from "./components/BudgetOverview";
 import TopCategories from "./components/TopCategories";
 import { DraggableWidget } from "./components/DraggableWidget";
 
+interface SpanConstraints {
+  min: number;
+  max: number;
+  default: number;
+}
+
 export interface WidgetType {
   id: string;
   type: "spending" | "budget" | "categories" | "transactions";
-  span: 1 | 2 | 3;
-  minSpan?: 1 | 2;
-  maxSpan?: 1 | 2 | 3;
+  spans: {
+    mobile: SpanConstraints;
+    tablet: SpanConstraints;
+    desktop: SpanConstraints;
+  };
+  title: string;
 }
 
 const DEFAULT_WIDGETS: WidgetType[] = [
   {
     id: "spending-chart",
     type: "spending",
-    span: 2,
-    minSpan: 2,
+    title: "Spending Trends",
+    spans: {
+      mobile: { min: 1, max: 1, default: 1 },
+      tablet: { min: 1, max: 2, default: 2 },
+      desktop: { min: 1, max: 2, default: 2 },
+    },
   },
   {
     id: "budget-overview",
     type: "budget",
-    span: 1,
-    maxSpan: 1,
+    title: "Budget Overview",
+    spans: {
+      mobile: { min: 1, max: 1, default: 1 },
+      tablet: { min: 1, max: 1, default: 1 },
+      desktop: { min: 1, max: 1, default: 1 },
+    },
   },
   {
     id: "top-categories",
     type: "categories",
-    span: 1,
-    maxSpan: 2,
+    title: "Top Categories",
+    spans: {
+      mobile: { min: 1, max: 1, default: 1 },
+      tablet: { min: 1, max: 1, default: 1 },
+      desktop: { min: 1, max: 1, default: 1 },
+    },
   },
   {
     id: "recent-transactions",
     type: "transactions",
-    span: 3,
-    minSpan: 2,
+    title: "Recent Transactions",
+    spans: {
+      mobile: { min: 1, max: 1, default: 1 },
+      tablet: { min: 2, max: 2, default: 2 },
+      desktop: { min: 2, max: 3, default: 2 },
+    },
   },
 ];
 
@@ -64,7 +90,10 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [widgets, setWidgets] = useState<WidgetType[]>(DEFAULT_WIDGETS);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    id: string;
+    zone: string;
+  } | null>(null);
 
   const firstName = user?.firstName
     ? user.firstName.charAt(0).toUpperCase() + user.firstName.slice(1)
@@ -73,40 +102,57 @@ const Dashboard: React.FC = () => {
     ? user.lastName.charAt(0).toUpperCase() + user.lastName.slice(1)
     : "";
 
+  // Enhanced sensors with better touch handling
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 10,
+        distance: 3, // Reduced distance for easier activation
+        tolerance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 200, // Reduced delay for better response
+        tolerance: 8,
       },
     }),
   );
 
-  const getColumnClasses = (widget: WidgetType) => {
-    // Base classes for all widgets
-    const classes = ["col-span-1"];
+  // Custom collision detection that respects span constraints
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const intersections = rectIntersection(args);
+      const activeWidget = widgets.find((w) => w.id === args.active.id);
 
-    // Medium screens (md: 768px and up)
-    if (widget.span >= 2 || widget.minSpan === 2) {
-      classes.push("md:col-span-2");
-    }
+      if (!activeWidget || !intersections.length) return [];
 
-    // Large screens (lg: 1024px and up)
-    if (widget.span === 3 || (widget.span === 2 && !widget.maxSpan)) {
-      classes.push("lg:col-span-3");
-    } else if (
-      widget.span === 2 ||
-      (widget.span === 1 && widget.maxSpan === 2)
-    ) {
-      classes.push("lg:col-span-2");
-    }
+      // Filter out invalid drop targets based on constraints
+      return intersections.filter((intersection) => {
+        const targetWidget = widgets.find((w) => w.id === intersection.id);
+        if (!targetWidget) return false;
 
-    return classes.join(" ");
+        // Check if the swap would violate any constraints
+        const canSwap =
+          activeWidget.spans.desktop.min <= targetWidget.spans.desktop.max &&
+          targetWidget.spans.desktop.min <= activeWidget.spans.desktop.max;
+        return canSwap;
+      });
+    },
+    [widgets],
+  );
+
+  const getResponsiveClasses = (widget: WidgetType) => {
+    const { mobile, tablet, desktop } = widget.spans;
+
+    return cn(
+      // Mobile (default)
+      `col-span-${mobile.default}`,
+      // Tablet
+      `md:col-span-${tablet.default}`,
+      // Desktop
+      `lg:col-span-${desktop.default}`,
+      "transition-all duration-300",
+    );
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -114,7 +160,16 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    setOverId(event.over?.id.toString() || null);
+    const { over, active } = event;
+    if (!over) {
+      setDropTarget(null);
+      return;
+    }
+
+    setDropTarget({
+      id: over.id.toString(),
+      zone: active.id === over.id ? "self" : "other",
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -129,7 +184,7 @@ const Dashboard: React.FC = () => {
     }
 
     setActiveId(null);
-    setOverId(null);
+    setDropTarget(null);
   };
 
   const renderWidget = (widget: WidgetType) => {
@@ -148,7 +203,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4 w-full">
       {/* Welcome Section */}
       <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div>
@@ -162,10 +217,10 @@ const Dashboard: React.FC = () => {
       {/* Fixed Stats Grid */}
       <StatCards />
 
-      {/* Draggable Widgets Grid */}
+      {/* Enhanced Draggable Widgets Grid */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -175,33 +230,37 @@ const Dashboard: React.FC = () => {
             {widgets.map((widget) => (
               <div
                 key={widget.id}
-                className={cn(
-                  getColumnClasses(widget),
-                  "relative",
-                  "transition-all duration-200",
-                )}
+                className={cn(getResponsiveClasses(widget), "relative group")}
               >
-                {/* Drop Zone Indicator */}
+                {/* Enhanced Drop Zone Indicator */}
                 {activeId && activeId !== widget.id && (
                   <div
                     className={cn(
                       "absolute inset-0 rounded-xl border-2 border-dashed z-10",
-                      "transition-colors duration-200",
-                      overId === widget.id
-                        ? "border-indigo-500 bg-indigo-50/50"
+                      "transition-all duration-200",
+                      dropTarget?.id === widget.id
+                        ? "border-indigo-500 bg-indigo-50/50 scale-105"
                         : "border-gray-200 bg-gray-50/50",
                     )}
                   />
                 )}
 
-                {/* Widget Content */}
+                {/* Widget Content with Enhanced Drag Handle */}
                 <DraggableWidget
                   widget={widget}
                   className={cn(
-                    "relative z-20",
-                    activeId === widget.id && "opacity-50",
+                    "relative z-20 transition-all duration-200",
+                    activeId === widget.id
+                      ? "opacity-50 scale-105"
+                      : "hover:shadow-md",
+                    dropTarget?.id === widget.id && "transform scale-95",
                   )}
                 >
+                  <div className="rounded-t-xl bg-gray-50 px-4 py-2 border-b border-gray-100">
+                    <h3 className="font-medium text-gray-700">
+                      {widget.title}
+                    </h3>
+                  </div>
                   {renderWidget(widget)}
                 </DraggableWidget>
               </div>
@@ -209,12 +268,14 @@ const Dashboard: React.FC = () => {
           </SortableContext>
         </div>
 
+        {/* Enhanced Drag Overlay */}
         <DragOverlay>
           {activeId && (
             <div
               className={cn(
-                "bg-white rounded-xl shadow-lg border border-gray-100",
-                getColumnClasses(widgets.find((w) => w.id === activeId)!),
+                "bg-white rounded-xl shadow-xl border border-gray-100",
+                getResponsiveClasses(widgets.find((w) => w.id === activeId)!),
+                "opacity-90 rotate-2 scale-105",
               )}
             >
               {renderWidget(widgets.find((w) => w.id === activeId)!)}

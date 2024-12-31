@@ -4,13 +4,10 @@ import { getCategories } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Transaction, Category } from "@/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import {
-  ArrowUpRight,
-  PieChart as PieChartIcon,
-  AlertTriangle,
-} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
+import Alert from "@/components/Alert";
 
 interface CategorySpending {
   name: string;
@@ -176,16 +173,10 @@ const TopCategories = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Top Categories
-          </h2>
-          <PieChartIcon className="w-5 h-5 text-gray-400" />
-        </div>
         <div className="animate-pulse space-y-6">
           <div className="h-64 bg-gray-100 rounded-lg" />
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((index) => (
+            {[1, 2, 3, 4].map((index) => (
               <div key={index} className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-gray-200 rounded-full" />
@@ -203,16 +194,9 @@ const TopCategories = () => {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Top Categories
-          </h2>
-          <AlertTriangle className="w-5 h-5 text-red-500" />
-        </div>
-        <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{error}</span>
-        </div>
+        <Alert title="Error" variant="error">
+          {error}
+        </Alert>
       </div>
     );
   }
@@ -220,17 +204,6 @@ const TopCategories = () => {
   if (categories.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Top Categories
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              No spending data available
-            </p>
-          </div>
-          <PieChartIcon className="w-5 h-5 text-gray-400" />
-        </div>
         <div className="text-center p-1">
           <EmptyState
             heading="No Spending Data"
@@ -247,20 +220,16 @@ const TopCategories = () => {
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Top Categories
-          </h2>
           <p className="text-sm text-gray-500 mt-1">
             Total spent:{" "}
             {formatCurrency(totalSpent, user?.preferences?.currency || "USD")}
           </p>
         </div>
-        <PieChartIcon className="w-5 h-5 text-gray-400" />
       </div>
 
       <div className="space-y-6">
         {/* Chart */}
-        <div className="h-64">
+        <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -269,7 +238,7 @@ const TopCategories = () => {
                 cy="50%"
                 innerRadius={60}
                 outerRadius={80}
-                paddingAngle={4}
+                paddingAngle={1}
                 dataKey="value"
                 onMouseEnter={(_, index) => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}

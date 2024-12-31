@@ -5,8 +5,6 @@ import {
   Calendar,
   Tag,
   PiggyBank as Bank,
-  Clock,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -17,6 +15,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import { getCategories } from "@/services/userService";
 import { Category, Transaction, TransactionType } from "@/types";
+import Alert from "@/components/Alert";
 interface TransactionItemProps {
   transaction: Transaction;
   category?: Category;
@@ -240,17 +239,6 @@ const RecentTransactions: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Recent Transactions
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Your latest financial activity
-            </p>
-          </div>
-          <Clock className="w-5 h-5 text-gray-400" />
-        </div>
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((index) => (
             <div key={index} className="flex items-center justify-between p-4">
@@ -272,67 +260,26 @@ const RecentTransactions: React.FC = () => {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Recent Transactions
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Your latest financial activity
-            </p>
-          </div>
-          <AlertTriangle className="w-5 h-5 text-red-500" />
-        </div>
-        <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{error}</span>
-        </div>
+        <Alert title="Error" variant="error">
+          {error}
+        </Alert>
       </div>
     );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Recent Transactions
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Your latest financial activity
-              </p>
-            </div>
-            <Clock className="w-5 h-5 text-gray-400" />
-          </div>
-        </div>
-        <div className="p-6">
-          <EmptyState
-            heading="No Recent Transactions"
-            message="Start tracking your finances by adding your first transaction."
-          />
-        </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <EmptyState
+          heading="No Recent Transactions"
+          message="Start tracking your finances by adding your first transaction."
+        />
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Recent Transactions
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Your latest financial activity
-            </p>
-          </div>
-          <Clock className="w-5 h-5 text-gray-400" />
-        </div>
-      </div>
-
       <div className="divide-y divide-gray-100">
         {transactions.map((transaction, index) => (
           <TransactionItem
