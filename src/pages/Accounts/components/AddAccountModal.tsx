@@ -93,7 +93,7 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Add New Account">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit}>
         {/* Error Message */}
         {error && (
           <Alert variant="error" title="Error" onDismiss={() => setError("")}>

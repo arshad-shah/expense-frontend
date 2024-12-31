@@ -59,13 +59,11 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
               whileTap={{ scale: 0.98 }}
               className="relative group"
             >
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
               <Button
                 variant="primary"
                 size="md"
                 onClick={onAddAccount}
                 disabled={disableAdd}
-                className="relative bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg shadow-blue-100/50"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Account

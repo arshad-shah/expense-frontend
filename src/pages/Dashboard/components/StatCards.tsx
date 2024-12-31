@@ -5,13 +5,15 @@ import {
   CreditCard,
   Wallet,
   PiggyBank,
-  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccounts } from "@/services/AccountService";
 import { getTransactions } from "@/services/TransactionService";
 import type { Transaction } from "@/types";
 import { cn, formatCurrency } from "@/lib/utils";
+import Alert from "@/components/Alert";
 
 interface StatData {
   totalBalance: number;
@@ -27,6 +29,8 @@ const StatCards = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { user } = useAuth();
+  const [activeCard, setActiveCard] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,7 +39,6 @@ const StatCards = () => {
       try {
         setLoading(true);
 
-        // Get all accounts
         const accountsResponse = await getAccounts(user.id);
         if (accountsResponse.status !== 200 || !accountsResponse.data) {
           throw new Error(accountsResponse.error || "Failed to fetch accounts");
@@ -46,7 +49,6 @@ const StatCards = () => {
           0,
         );
 
-        // Calculate dates for filtering
         const now = new Date();
         const currentMonthStart = new Date(
           now.getFullYear(),
@@ -65,7 +67,6 @@ const StatCards = () => {
         );
         const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-        // Get transactions for both months
         const [currentMonthResponse, previousMonthResponse] = await Promise.all(
           [
             getTransactions(
@@ -97,7 +98,6 @@ const StatCards = () => {
           throw new Error("Failed to fetch transactions");
         }
 
-        // Calculate monthly spending and savings
         const currentMonthData = calculateMonthlyData(
           currentMonthResponse.data.items,
         );
@@ -105,7 +105,6 @@ const StatCards = () => {
           previousMonthResponse.data.items,
         );
 
-        // Calculate month-over-month changes
         const spendingChange = calculatePercentageChange(
           previousMonthData.spending,
           currentMonthData.spending,
@@ -116,7 +115,6 @@ const StatCards = () => {
           currentMonthData.income - currentMonthData.spending,
         );
 
-        // Calculate balance change based on net flow
         const currentNetFlow =
           currentMonthData.income - currentMonthData.spending;
         const previousNetFlow =
@@ -178,18 +176,9 @@ const StatCards = () => {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            className="animate-pulse bg-white rounded-xl shadow-sm p-4 md:p-6"
           >
-            <div className="animate-pulse space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 bg-gray-100 rounded-lg"></div>
-                <div className="h-6 w-20 bg-gray-100 rounded-full"></div>
-              </div>
-              <div>
-                <div className="h-4 w-24 bg-gray-100 rounded mb-2"></div>
-                <div className="h-8 w-32 bg-gray-100 rounded"></div>
-              </div>
-            </div>
+            <div className="h-20 bg-gray-100 rounded-lg"></div>
           </div>
         ))}
       </div>
@@ -198,9 +187,10 @@ const StatCards = () => {
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-        <span className="text-sm">{error}</span>
+      <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+        <Alert title="Error" variant="error">
+          {error}
+        </Alert>
       </div>
     );
   }
@@ -217,110 +207,255 @@ const StatCards = () => {
     };
   };
 
-  const getCardStyle = (index: number) => {
-    const styles = [
-      {
-        gradient: "from-blue-50 to-indigo-50/50",
-        iconBg: "bg-blue-50",
-        iconColor: "text-blue-600",
-        border: "border-blue-100",
-      },
-      {
-        gradient: "from-emerald-50 to-teal-50/50",
-        iconBg: "bg-emerald-50",
-        iconColor: "text-emerald-600",
-        border: "border-emerald-100",
-      },
-      {
-        gradient: "from-violet-50 to-purple-50/50",
-        iconBg: "bg-violet-50",
-        iconColor: "text-violet-600",
-        border: "border-violet-100",
-      },
-    ];
-    return styles[index];
+  const handleCardChange = (index: number) => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setActiveCard(index);
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
   const statCards = [
     {
       title: "Total Balance",
-      amount: stats.totalBalance,
-      change: stats.balanceChange,
+      amount: stats?.totalBalance || 0,
+      change: stats?.balanceChange || 0,
       icon: Wallet,
-      description: "Net worth across all accounts",
+      gradientFrom: "from-blue-600",
+      gradientVia: "via-blue-500",
+      gradientTo: "to-sky-400",
+      description: "Total across all accounts",
+      tag: "Assets",
+      trend: stats?.balanceChange >= 0 ? "Up" : "Down",
+      trendDetail: `${Math.abs(stats?.balanceChange || 0).toFixed(1)}% from last month`,
     },
     {
-      title: "Monthly Spending",
-      amount: stats.monthlySpending,
-      change: stats.spendingChange,
+      title: "Monthly Expenses",
+      amount: stats?.monthlySpending || 0,
+      change: stats?.spendingChange || 0,
       icon: CreditCard,
       inverse: true,
-      description: "Total expenses this month",
+      gradientFrom: "from-rose-600",
+      gradientVia: "via-rose-500",
+      gradientTo: "to-orange-400",
+      description: "Total spent this month",
+      tag: "Spending",
+      trend: stats?.spendingChange <= 0 ? "Good" : "High",
+      trendDetail: `${Math.abs(stats?.spendingChange || 0).toFixed(1)}% vs last month`,
     },
     {
-      title: "Monthly Savings",
-      amount: stats.monthlySavings,
-      change: stats.savingsChange,
+      title: "Money Saved",
+      amount: stats?.monthlySavings || 0,
+      change: stats?.savingsChange || 0,
       icon: PiggyBank,
-      description: "Net savings this month",
+      gradientFrom: "from-emerald-600",
+      gradientVia: "via-emerald-500",
+      gradientTo: "to-teal-400",
+      description: "Amount saved this month",
+      tag: "Savings",
+      trend: stats?.savingsChange >= 0 ? "On Track" : "Below Target",
+      trendDetail: `${Math.abs(stats?.savingsChange || 0).toFixed(1)}% vs last month`,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {statCards.map((stat, index) => {
-        const style = getCardStyle(index);
-        const changeStyle = getChangeStyle(stat.change, stat.inverse);
-        const ChangeIcon = changeStyle.icon;
+    <div className="w-full">
+      {/* Desktop View */}
+      <div className="hidden md:grid md:grid-cols-3 gap-6">
+        {statCards.map((stat, index) => {
+          const changeStyle = getChangeStyle(stat.change, stat.inverse);
+          const ChangeIcon = changeStyle.icon;
 
-        return (
-          <div
-            key={index}
-            className={cn(
-              "relative bg-gradient-to-br rounded-xl shadow-sm p-6 border",
-              "transition-all duration-200",
-              "hover:shadow-md hover:border-opacity-75",
-              style.gradient,
-              style.border,
-            )}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={cn("p-2.5 rounded-xl", style.iconBg)}>
-                <stat.icon className={cn("h-6 w-6", style.iconColor)} />
+          return (
+            <div
+              key={index}
+              className={cn(
+                "relative overflow-hidden rounded-xl shadow-lg",
+                "bg-gradient-to-br",
+                stat.gradientFrom,
+                stat.gradientVia,
+                stat.gradientTo,
+                "p-6 group hover:shadow-xl transition-all duration-300",
+              )}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/80">
+                  {stat.tag}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold text-white">
+                  {stat.title}
+                </h3>
+                <p className="text-3xl font-bold text-white">
+                  {formatCurrency(
+                    stat.amount,
+                    user?.preferences?.currency || "USD",
+                  )}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <div
+                    className={cn(
+                      "flex items-center px-2.5 py-1 rounded-full text-sm font-medium",
+                      "bg-white/20 backdrop-blur-sm text-white",
+                    )}
+                  >
+                    <ChangeIcon className="h-4 w-4 mr-1" />
+                    {Math.abs(stat.change).toFixed(1)}%
+                  </div>
+                  <p className="text-sm text-white/80">{stat.trendDetail}</p>
+                </div>
               </div>
 
               <div
-                className={cn(
-                  "flex items-center px-2.5 py-1.5 rounded-full text-sm font-medium",
-                  changeStyle.colors,
-                )}
-              >
-                <ChangeIcon className="h-4 w-4 mr-1" />
-                {Math.abs(stat.change).toFixed(1)}%
-              </div>
+                className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16 blur-2xl transition-all 
+                            group-hover:bg-white/10 group-hover:w-40 group-hover:h-40"
+              ></div>
             </div>
+          );
+        })}
+      </div>
 
-            <div className="space-y-1">
-              <h3 className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </h3>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(
-                  stat.amount,
-                  user?.preferences?.currency || "USD",
-                )}
-              </p>
-              <p className="text-xs text-gray-500">{stat.description}</p>
-            </div>
+      {/* Mobile View */}
+      <div className="md:hidden">
+        <div className="relative overflow-hidden rounded-xl">
+          <NavigationButton
+            direction="left"
+            onClick={() =>
+              handleCardChange(
+                (activeCard - 1 + statCards.length) % statCards.length,
+              )
+            }
+          />
+          <NavigationButton
+            direction="right"
+            onClick={() =>
+              handleCardChange((activeCard + 1) % statCards.length)
+            }
+          />
 
-            {/* Decorative Elements */}
-            <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-white/50 to-transparent"></div>
+          <div
+            className="flex transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${activeCard * 100}%)` }}
+          >
+            {statCards.map((stat, index) => {
+              const changeStyle = getChangeStyle(stat.change, stat.inverse);
+              const ChangeIcon = changeStyle.icon;
+
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex-shrink-0 w-full px-12 py-6",
+                    "bg-gradient-to-br",
+                    stat.gradientFrom,
+                    stat.gradientVia,
+                    stat.gradientTo,
+                    " overflow-hidden",
+                  )}
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-white/20 backdrop-blur-sm">
+                        <stat.icon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-white/80">
+                          {stat.tag}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10">
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {stat.title}
+                    </h3>
+                    <p className="text-3xl font-bold text-white mb-4">
+                      {formatCurrency(
+                        stat.amount,
+                        user?.preferences?.currency || "USD",
+                      )}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex items-center px-2.5 py-1 rounded-full text-sm 
+                                    bg-white/20 backdrop-blur-sm text-white"
+                      >
+                        <ChangeIcon className="h-4 w-4 mr-1" />
+                        <span className="font-medium">
+                          {Math.abs(stat.change).toFixed(1)}%
+                        </span>
+                      </div>
+                      <p className="text-sm text-white/80">
+                        {stat.trendDetail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16 blur-2xl"></div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+
+        {/* Enhanced Carousel Indicator */}
+        <div className="flex justify-center items-center gap-3 mt-6">
+          {statCards.map((_, index) => {
+            const isActive = index === activeCard;
+            return (
+              <button
+                key={index}
+                onClick={() => handleCardChange(index)}
+                className={cn(
+                  "transition-all duration-300 rounded-full",
+                  "shadow-sm hover:scale-110",
+                  isActive
+                    ? cn(
+                        "w-8 h-2",
+                        index === 0 ? "bg-blue-500" : "",
+                        index === 1 ? "bg-rose-500" : "",
+                        index === 2 ? "bg-emerald-500" : "",
+                      )
+                    : cn(
+                        "w-2 h-2",
+                        "bg-gray-300 hover:bg-gray-400",
+                        "dark:bg-gray-600 dark:hover:bg-gray-500",
+                      ),
+                )}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
+
+const NavigationButton = ({
+  direction,
+  onClick,
+}: {
+  direction: "left" | "right";
+  onClick: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    className="absolute top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 backdrop-blur-sm 
+              hover:bg-white/20 transition-all z-10 text-white"
+    style={{ [direction]: "0.5rem" }}
+  >
+    {direction === "left" ? (
+      <ChevronLeft size={20} />
+    ) : (
+      <ChevronRight size={20} />
+    )}
+  </button>
+);
 
 export default StatCards;
